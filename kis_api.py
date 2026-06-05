@@ -520,14 +520,22 @@ def get_index_minute_chart(market="KOSPI", target_time=None, max_retries=2):
     for row in data.get("output2", []):
         if not row.get("stck_cntg_hour"):
             continue
+        # kis_api.py (수정할 부분: get_index_minute_chart 함수 끝부분)
+
+        # ... (중략) ...
         bars.append({
             "date": row.get("stck_bsop_date", ""),
-            "time": row.get("stck_cntg_hour", ""),
-            "open": float(row.get("bstp_nmix_oprc", 0) or 0),
-            "high": float(row.get("bstp_nmix_hgpr", 0) or 0),
-            "low": float(row.get("bstp_nmix_lwpr", 0) or 0),
+            "time": t,
+            "open":  float(row.get("bstp_nmix_oprc", 0) or 0),
+            "high":  float(row.get("bstp_nmix_hgpr", 0) or 0),
+            "low":   float(row.get("bstp_nmix_lwpr", 0) or 0),
             "close": float(row.get("bstp_nmix_prpr", 0) or 0),
-            "volume": int(row.get("acml_vol", 0) or 0),
+            "volume":        int(row.get("cntg_vol", 0) or 0),
+            "trading_value": int(row.get("acml_tr_pbmn", 0) or 0),
         })
+    
+    # [기존 코드에는 이 아래로 if target_time is None: ... 등 쓰레기 코드가 있었음]
+    # [수정] 아래 두 줄을 끝으로 해당 함수를 완전히 종료시킬 것
     bars.sort(key=lambda x: (x["date"], x["time"]))
     return bars
+        

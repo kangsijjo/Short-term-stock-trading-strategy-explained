@@ -65,14 +65,24 @@ async def db_worker(queue):
         except asyncio.TimeoutError:
             pass
 
+# tick_collector.py (수정할 부분: db_worker 함수 내부 루프)
+
+        # 버퍼에 50개 이상 쌓였거나 타임아웃 시 저장 시도
         if len(batch_data) >= 50 or (len(batch_data) > 0 and queue.empty()):
-            cursor.executemany(
-                "INSERT INTO tick_data (code, date, time, price, volume) VALUES (?, ?, ?, ?, ?)",
-                batch_data
-            )
-            conn.commit()
-            print(f"[DB] {len(batch_data)}건의 틱 데이터 적재 완료.")
-            batch_data.clear()
+            # [수정 코드] SQLite 쓰기 잠금 에러 발생 시 시스템 셧다운을 막는 예외 처리 추가
+            try:
+                cursor.executemany(
+                    "INSERT INTO tick_data (code, date, time, price, volume) VALUES (?, ?, ?, ?, ?)",
+                    batch_data
+                )
+                conn.commit()
+                print(f"[DB] {len(batch_data)}건의 틱 데이터 적재 완료.")
+                batch_data.clear() # 성공했을 때만 버퍼를 비움
+            except sqlite3.OperationalError as e:
+                # 에러가 나면 clear()를 하지 않으므로 큐 데이터가 소실되지 않고 다음 루프에서 재시도됨
+                print(f"[DB 경고] DB가 사용 중입니다. 데이터를 보존하고 재시도합니다: {e}")
+
+
 
     # 남은 찌꺼기 털어넣기
     if batch_data:
