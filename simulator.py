@@ -83,6 +83,25 @@ class Simulator:
             if in_position:
                 high_after_entry = max(high_after_entry, row["high"])
 
+                # v2.7 조기 종료 — 진입 후 early_exit_minutes 시점에 평가.
+                # 손실 임계값 이하면 시간청산까지 안 기다리고 즉시 종료.
+                # 1차 익절 이미 했으면 (partial_tp_done) skip — 트레일링이 보호.
+                if (self.cfg.get("early_exit_enabled", False)
+                        and not partial_tp_done
+                        and i - entry_idx == self.cfg.get("early_exit_minutes", 10)):
+                    cur_pct = (row["close"] / entry_price - 1) * 100
+                    if cur_pct <= self.cfg.get("early_exit_threshold_pct", -0.5):
+                        t = self._close_trade(
+                            i_entry=entry_idx, entry_price=entry_price,
+                            entry_time=entry_time, exit_idx=i, exit_row=row,
+                            exit_price=row["close"], reason="early_exit",
+                            partial_tp_price=partial_tp_price, partial_tp_pct=partial_tp_pct,
+                            high_after_entry=high_after_entry,
+                        )
+                        trades.append(t)
+                        in_position = False
+                        continue
+
                 if i >= exit_deadline_idx:
                     t = self._close_trade(
                         i_entry=entry_idx, entry_price=entry_price,

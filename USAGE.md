@@ -10,6 +10,9 @@
 |---|---|
 | 오늘 데이터 수동 수집 (KIS) | `python data_collector.py today` |
 | 신용/공매도 수동 수집 (KRX) | `python krx_collector.py both` |
+| 매크로 3년치 일봉 수집 (스윙용) | `python pykrx_collector.py` |
+| 매크로 3전략 동시 백테스트 (스윙) | `python pykrx_backtester.py` |
+| 오버나잇 종가베팅 백테스트 (스윙) | `python backtest_swing.py` |
 | 오늘 공시 수동 수집 (DART) | `python dart_collector.py today` |
 | 백테스트 실행 (전체 기간) | `python backtest.py` |
 | 백테스트 (특정 날짜/모드) | `python backtest.py 20260604 AB` |
@@ -228,6 +231,47 @@ market_div (J/NX/UN) 별로 17:00 시각 분봉을 시도해서 vps 환경 NXT �
 
 실시간 트레이딩 인프라 구축용 별건 모듈. 백테스트 흐름과는 독립.
 
+### run_tick_collector.bat *(NEW)*
+**용도**: `tick_collector.py` 를 장중 자동 실행, 15:30 종료. 끊김 시 재시작 루프.
+
+---
+
+## 스윙 전략 (별건, 일봉 기반)
+
+단타(룰 v2)의 비용 한계 회피를 위해 일봉 기반 스윙 전략 인프라 별도 구축.
+
+### pykrx_collector.py *(NEW)*
+**용도**: pykrx 로 3년치 일봉 + 수급 데이터 수집 → `macro_data/daily/` 적재.
+
+**전제**: `pip install pykrx`, KRX_ID/PW 등록 (krx_collector 와 동일).
+
+**명령어**:
+```
+python pykrx_collector.py
+```
+
+### pykrx_backtester.py *(NEW)*
+**용도**: 3년치 일봉 데이터로 매크로 전략 3개 동시 벡터화 백테스트. 단타 simulator 와 독립.
+
+**명령어**:
+```
+python pykrx_backtester.py
+```
+
+### backtest_swing.py *(NEW)*
+**용도**: 오버나잇 종가베팅 백테스트.
+- 진입: 15:20, MA5 위 + 당일 외인 순매수 양수
+- 청산: 익일 09:05 시가 (갭 수익 확정)
+
+분봉 데이터 활용 (data_loader 와 같은 분봉 사용). analyzer/Trade 데이터클래스 재사용.
+
+**명령어**:
+```
+python backtest_swing.py
+```
+
+전제: `data/rankings/`, `db/minute/`, `db/investor/` 모두 채워져 있어야 함 (분봉 시점 + 외인 데이터 필요).
+
 ---
 
 ### monthly_xlsx_builder.py
@@ -361,19 +405,19 @@ C:\fin\outputs\
 
 ### 룰 파라미터
 
-| 항목 | 값 |
-|---|---|
-| 시장 | KOSPI + KOSDAQ |
-| 종목 풀 | 거래대금 raw 상위 50 (ETF/우선주는 백테스트에서 제외) |
-| 박스 시간 | 직전 5분 (현재 분봉 제외) |
-| 박스 폭 | ±2.0% (0.8% 미만 제외) |
-| 진입 A | 박스 하단 + 박스폭의 5% |
-| 진입 B | 박스 + 거래량 2배↑ + close > box_high (진짜 돌파만) |
-| 1차 익절 | +0.7% 에서 절반 |
-| 트레일링 | 고점 대비 -0.4% |
-| 시간 청산 | 5분 |
-| 손절 | -1.8% |
-| 비용 가정 | 수수료 0.015%×2 + 거래세(KOSDAQ 0.20%) + 슬리피지 0.05%×2 = 약 0.43% |
+| 항목 | 값 | 변경 이력 |
+|---|---|---|
+| 시장 | KOSPI + KOSDAQ | |
+| 종목 풀 | 거래대금 raw 상위 50 (ETF/우선주는 백테스트에서 제외) | |
+| **박스 시간** | **직전 10분** (현재 분봉 제외) | (기존 5분, 22일치 시간청산 78% 대응) |
+| 박스 폭 | ±2.0% (0.8% 미만 제외) | |
+| 진입 A | 박스 하단 + 박스폭의 5% | |
+| 진입 B | 박스 + 거래량 2배↑ + close > box_high (진짜 돌파만) | |
+| **1차 익절** | **+0.8%** 에서 절반 | (기존 0.7%) |
+| 트레일링 | 고점 대비 -0.4% | |
+| **시간 청산** | **15분** | (기존 5분, 진득 대기) |
+| **손절** | **-2.0%** | (기존 -1.8%, 잔파도 털림 방지) |
+| 비용 가정 | 수수료 0.015%×2 + 거래세(KOSDAQ 0.20%) + 슬리피지 0.05%×2 = 약 0.43% | |
 
 ### 8일치 데이터 분석 결과 (2026-06-04 기준)
 

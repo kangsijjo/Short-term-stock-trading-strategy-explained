@@ -1,5 +1,5 @@
 ﻿"""
-백테스트/자동매매 설정 파일 - 룰 v2
+백테스트/자동매매 설정 파일 - 룰 v2 (스나이퍼 모드 적용)
 
 룰 변경 시 RULE_V2 dict 만 수정하면 됩니다.
 KIS API 인증은 .env 파일에서 자동으로 로드합니다.
@@ -59,27 +59,32 @@ if not KIS_APP_KEY or not KIS_APP_SECRET:
 
 
 # ============================================================
-# 룰 v2 파라미터
+# 룰 v2 파라미터 (스나이퍼 모드 적용)
 # ============================================================
 RULE_V2 = {
     # 박스권 감지
-    "box_window_minutes": 5,         # 박스 형성 시간 (분)
-    "box_max_pct": 2.0,              # 박스 최대 폭 (±%)
-    "box_min_pct": 0.8,              # 박스 최소 폭 (이하 제외)
+    "box_window_minutes": 15,        # v2.6 (10 → 15) timeframe 더 확장 — 박스 형성 더 신뢰
+    "box_max_pct": 2.5,              # (기존 2.0) 박스 최대 폭 (±%)
+    "box_min_pct": 1.5,              # (기존 0.8) 수수료를 덮고 수익을 내기 위해 위아래 폭이 1.5% 이상인 넓은 박스만 타겟팅
 
     # 거래량 급증 신호
     "volume_baseline_minutes": 3,    # 직전 N분 평균 기준
     "volume_surge_multiplier": 2.0,  # 평균의 N배 이상이면 급증
 
     # 진입 (모드 A: 박스 하단 매수)
-    "entry_offset_pct_of_box": 5.0,  # 박스 하단에서 박스폭의 N% 위 (5틱 근사)
+    "entry_offset_pct_of_box": 10.0, # (기존 5.0) 하단 10% 이내에 완전히 바짝 붙었을 때만 깐깐하게 매수
 
     # 청산
-    "tp_first_pct": 0.7,             # 1차 익절 (+%)
+    "tp_first_pct": 1.0,             # v2.6 (0.8 → 1.0) 1차 익절 더 큼 — 비용 0.43% 대비 마진 확보
     "tp_first_ratio": 0.5,           # 1차 익절 비율 (50%)
     "trailing_drawdown_pct": 0.4,    # 트레일링 스탑 (고점 대비 -%)
-    "time_exit_minutes": 5,          # 시간 청산 (분)
-    "stop_loss_pct": -1.8,           # 손절 (-%)
+    "time_exit_minutes": 20,         # v2.6 (15 → 20) 더 진득 — 박스 15분이면 결말도 15~20분에 더 걸림
+    "stop_loss_pct": -2.0,           # (기존 -1.8) 잔파도 털림 방지를 위해 손절폭 소폭 확대 (-%)
+
+    # v2.7 조기 종료 — 진입 후 절반 시점에 평가, 임계값 미만이면 즉시 종료
+    "early_exit_enabled": True,
+    "early_exit_minutes": 10,         # 진입 후 N분 시점에 평가 (time_exit_minutes / 2 권장)
+    "early_exit_threshold_pct": -0.5, # 현재 손익이 이 % 이하면 즉시 조기 종료
 
     # 비용 가정 (보수적)
     "fee_buy_pct": 0.015,            # 매수 수수료 (%)
