@@ -8,12 +8,13 @@ $bat         = Join-Path $dir "run_collector.bat"
 $batBacktest = Join-Path $dir "run_backtest.bat"
 $batKrx      = Join-Path $dir "run_krx.bat"
 $batDart     = Join-Path $dir "run_dart.bat"
+$batPaper    = Join-Path $dir "run_paper.bat"
 $pyMonthly   = Join-Path $dir "monthly_xlsx_builder.py"
 
 Write-Host "Installing KIS scheduled tasks from: $dir"
 Write-Host ""
 
-foreach ($f in @($bat, $batBacktest, $batKrx, $batDart)) {
+foreach ($f in @($bat, $batBacktest, $batKrx, $batDart, $batPaper)) {
     if (-not (Test-Path $f)) {
         Write-Host "[ERROR] $f not found" -ForegroundColor Red
         exit 1
@@ -21,7 +22,7 @@ foreach ($f in @($bat, $batBacktest, $batKrx, $batDart)) {
 }
 
 # Remove existing tasks (clean install)
-foreach ($t in @("KIS_Ranking","KIS_EOD","KIS_Monthly","KIS_Backtest","KIS_KRX","KIS_DART")) {
+foreach ($t in @("KIS_Ranking","KIS_EOD","KIS_Monthly","KIS_Backtest","KIS_KRX","KIS_DART","KIS_Paper")) {
     Unregister-ScheduledTask -TaskName $t -Confirm:$false -ErrorAction SilentlyContinue
 }
 
@@ -29,6 +30,7 @@ $action         = New-ScheduledTaskAction -Execute $bat         -Argument "auto"
 $actionBacktest = New-ScheduledTaskAction -Execute $batBacktest -Argument "auto" -WorkingDirectory $dir
 $actionKrx      = New-ScheduledTaskAction -Execute $batKrx      -Argument "auto" -WorkingDirectory $dir
 $actionDart     = New-ScheduledTaskAction -Execute $batDart     -Argument "auto" -WorkingDirectory $dir
+$actionPaper    = New-ScheduledTaskAction -Execute $batPaper    -Argument "auto" -WorkingDirectory $dir
 
 function New-KisSettings {
     $s = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -ExecutionTimeLimit (New-TimeSpan -Hours 2)
@@ -65,7 +67,13 @@ Register-ScheduledTask -TaskName "KIS_KRX" -Action $actionKrx -Trigger $trgKrx `
         -Settings (New-KisSettings) -Force | Out-Null
 Write-Host "[4/6] KIS_KRX      - daily 08:30 (T-1 credit/short balance)"
 
-# [5/6] KIS_DART : daily 19:00 (당일 공시)
+# [5/7] KIS_Paper : daily 16:30 (메인 전략 신호 + paper tracker)
+$trgPaper = New-ScheduledTaskTrigger -Daily -At "16:30"
+Register-ScheduledTask -TaskName "KIS_Paper" -Action $actionPaper -Trigger $trgPaper `
+        -Settings (New-KisSettings) -Force | Out-Null
+Write-Host "[5/7] KIS_Paper    - daily 16:30 (paper trading signals + tracker)"
+
+# [6/7] KIS_DART : daily 19:00 (당일 공시)
 $trgDart = New-ScheduledTaskTrigger -Daily -At "19:00"
 Register-ScheduledTask -TaskName "KIS_DART" -Action $actionDart -Trigger $trgDart `
         -Settings (New-KisSettings) -Force | Out-Null
@@ -82,14 +90,14 @@ Write-Host "[6/6] KIS_Monthly  - 1st of month 02:00"
 Write-Host ""
 Write-Host "=== Verification (next run time) ==="
 $allOk = $true
-foreach ($t in @("KIS_Ranking","KIS_EOD","KIS_Backtest","KIS_KRX","KIS_DART","KIS_Monthly")) {
+foreach ($t in @("KIS_Ranking","KIS_EOD","KIS_Backtest","KIS_KRX","KIS_DART","KIS_Paper","KIS_Monthly")) {
     $info = Get-ScheduledTask -TaskName $t | Get-ScheduledTaskInfo
     $next = if ($info.NextRunTime) { $info.NextRunTime } else { "<NONE - PROBLEM>"; $allOk = $false }
     Write-Host ("  {0,-13} next: {1}" -f $t, $next)
 }
 Write-Host ""
 if ($allOk) {
-    Write-Host "All 6 tasks have a valid next-run time. OK." -ForegroundColor Green
+    Write-Host "All 7 tasks have a valid next-run time. OK." -ForegroundColor Green
 } else {
     Write-Host "A task has no next-run time. Check above." -ForegroundColor Red
 }

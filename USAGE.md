@@ -1,26 +1,149 @@
 # Stock_AI_Project 파일 사용 가이드
 
-단타 박스권 매매(룰 v2) 시스템. KIS API + KRX + DART → 데이터 수집 → 백테스트 파이프라인.
+**메인 전략: high_500d_h40_MKT** (500일 신고가 + 40일 보유 + 시장 강세 게이트).
+3년치 데이터 4단계 분석 (매매당 → 자본 → walk-forward → multi-split) 거쳐 확정.
+실측 CAGR +79.75%/년, MDD -10.13%, Sharpe +1.95.
+
+단타 박스권 룰 v2 는 비용 한계로 break-even 미달 → 별건으로만 유지 (자동 백테스트).
+
+## 시스템 한눈에
+
+```
+데이터 수집                전략 평가                실전 운용
+┌─────────────┐          ┌─────────────┐         ┌─────────────┐
+│ KIS API     │          │ strategies/ │         │ live_signal │
+│   ranking   │ ──────► │   14종 등록  │ ──────►│   매일 16:30 │
+│   분봉      │          │             │         │             │
+│ pykrx       │          │ engine.py   │         │ paper_      │
+│   3년 일봉  │          │   비교 표   │         │   tracker   │
+│ KRX,DART    │          │ capital_sim │         │             │
+│             │          │ walkforward │         │ → 진짜 시장 │
+└─────────────┘          └─────────────┘         └─────────────┘
+```
 
 ---
 
-## 1. 자주 쓰는 명령어 (이거 6개만 알면 거의 다 됨)
+## 1. 자주 쓰는 명령어
 
+### ⭐ 메인 운영 (매일)
 | 목적 | 명령어 |
 |---|---|
-| 오늘 데이터 수동 수집 (KIS) | `python data_collector.py today` |
-| 신용/공매도 수동 수집 (KRX) | `python krx_collector.py both` |
-| 매크로 3년치 일봉 수집 (스윙용) | `python pykrx_collector.py` |
-| 매크로 3전략 동시 백테스트 (스윙) | `python pykrx_backtester.py` |
-| 오버나잇 종가베팅 백테스트 (스윙) | `python backtest_swing.py` |
-| 오늘 공시 수동 수집 (DART) | `python dart_collector.py today` |
-| 백테스트 실행 (전체 기간) | `python backtest.py` |
-| 백테스트 (특정 날짜/모드) | `python backtest.py 20260604 AB` |
+| **오늘 메인 전략 신호** | `python live_signal.py` |
+| **paper trading 상태 + 누적 손익** | `python paper_tracker.py` |
+| 6/5 같이 신호 0건 시 진단 | `python debug_signal.py` |
+
+### 전략 평가 (가끔)
+| 목적 | 명령어 |
+|---|---|
+| 14개 전략 동시 비교 + 자본 시뮬 | `python strategy_engine.py` |
+| Walk-forward 견고성 (3 split) | `python walkforward.py` |
+| paper_signals.csv 초기 시드 | `python seed_paper_signals.py` |
+
+### 데이터 수집 (자동화됨, 수동은 가끔)
+| 목적 | 명령어 |
+|---|---|
+| KIS 데이터 (단타 별건) | `python data_collector.py today` |
+| KRX 공매도 | `python krx_collector.py both` |
+| DART 공시 | `python dart_collector.py today` |
+| pykrx 일봉 (메인 전략 데이터) | `python pykrx_collector.py` |
+
+### 옛 백테스트 (별건 유지)
+| 목적 | 명령어 |
+|---|---|
+| 단타 v2 백테스트 | `python backtest.py` |
+| 오버나잇 종가베팅 | `python backtest_swing.py` |
+| 매크로 3전략 벡터화 | `python pykrx_backtester.py` |
+
+### 시스템
+| 목적 | 명령어 |
+|---|---|
 | 자동화 상태 확인 | `Get-ScheduledTask -TaskName "KIS_*" \| Get-ScheduledTaskInfo \| Select TaskName, NextRunTime, LastRunTime, LastTaskResult` |
 
 모든 명령은 먼저 `cd C:\fin\outputs` + `.venv\Scripts\Activate.ps1` (또는 `.venv\Scripts\activate`) 후 실행. 그러면 `python` 명령이 venv 의 Python 을 가리켜 pykrx 등 프로젝트 패키지를 정상 인식.
 
 `py -3.11` 사용도 가능하지만 시스템 Python 을 띄우기 때문에 venv 패키지 못 보임. **venv 활성화 후 `python` 사용 권장.**
+
+---
+
+## 1.5 메인 전략 — high_500d_h40_MKT
+
+### 룰
+| 항목 | 값 |
+|---|---|
+| 진입 | 종가가 직전 500 영업일 신고가 돌파 |
+| 시장 게이트 | 시장 평균 등락률의 60일 MA > 0 (강세장만) |
+| 유동성 | 거래대금 ≥ 10억 (전일) |
+| 진입가 | 신호 다음 영업일 시가 |
+| 청산 | 진입 후 40 영업일 종가 |
+| 자본 운용 | 최대 10종목 동시보유 (max_concurrent), 자본 1/N 분배 |
+
+### 실측 성과 (3년치 macro_data)
+
+| 지표 | 값 |
+|---|---|
+| n_trades | 1,813 |
+| 승률 | 48.7% |
+| CAGR | **+79.75%/년** |
+| Real MDD | **-10.13%** |
+| Real Sharpe | **+1.95** |
+| 1천만원 → 3년 후 | 약 1,873만원 |
+
+### Walk-forward Multi-split 견고성
+
+| Split | OOS CAGR |
+|---|---|
+| 50/50 | +77.67% |
+| 67/33 | +35.40% |
+| 75/25 | +44.50% |
+| **모든 split 에서 OOS 양수** | ⭐ 가장 견고한 단일 전략 |
+
+### 폐기/대안 전략
+- **단타 박스권 룰 v2**: profit_factor 0.55, 비용 0.33% 못 이김 → 폐기 (자동 백테스트만 유지)
+- **portfolio_v1~v4**: 다각화가 max_concurrent=10 슬롯 병목으로 단일보다 약함
+- 종가베팅/모멘텀/RSI/갭매매 등 11개: OOS 검증 못 통과
+
+---
+
+## 1.6 분석 4단계 — 진실에 도달한 과정
+
+| 단계 | 결과 | 진실? |
+|---|---|---|
+| 1. 매매당 평균 | high_500d_h40 (pf 2.04) 우위 | ❌ 자본 회전 무시 |
+| 2. 자본 시뮬 | high_500d_h40 (+129%) 우위 | ❌ train 운 포함 |
+| 3. 단일 walk-forward (67/33) | portfolio_trend3, h500_40 폐기 | ❌ 단일 분할 운 |
+| 4. **Multi-split walk-forward** | **high_500d_h40_MKT 단일 확정** | ⭐ **진짜 답** |
+
+**교훈**: 4단계 검증 거쳐야 진실. 매매당 평균만 보고 결정 X. 시장 게이트 (MKT 필터) 가 진짜 가치.
+
+---
+
+## 1.7 Paper Trading 사용법
+
+### 매일 운영 (자동)
+- **KIS_Paper 작업** 매일 16:30 자동 실행
+- `live_signal.py` → 오늘 신호 종목 출력 + `paper_signals.csv` 추가
+- `paper_tracker.py` → 누적 매매 + 현재 보유 + 자본 곡선
+
+### 수동 점검 (필요 시)
+```powershell
+python live_signal.py       # 오늘 신호 (시장 약세면 0건이 정상)
+python paper_tracker.py     # 누적 손익 + 보유 포지션
+python debug_signal.py      # 신호 0건일 때 진단
+```
+
+### 실전 진행 단계 (계획)
+1. **지금~1개월**: 자동 paper trading 누적 (KIS_Paper 16:30)
+2. **1개월 후**: 실제 누적 결과 점검. 백테스트 예상치와 비교.
+3. **2~3개월 누적 → 검증 통과 시**: 소액 (50~100만원) 실전 진입
+4. **6개월 안정 운용 후**: 자본 증액 단계
+
+### Paper 데이터 흐름
+```
+macro_data/daily/*.csv ──► live_signal.py ──► paper_signals.csv
+                                                  │
+                                                  ▼
+                              paper_tracker.py ──► 자본 곡선 + 손익
+```
 
 ---
 
@@ -118,6 +241,66 @@ py -3.11 backtest.py 20260604 AB        # 둘 다
 **자동 호출**: `run_backtest.bat` 가 매일 16:00 호출.
 
 ---
+
+### live_signal.py *(MAIN)*
+**용도**: 메인 전략 high_500d_h40_MKT 신호 감지. 매일 실행.
+
+**명령어**: `python live_signal.py`
+
+**기능**:
+- macro_data/daily/ 최신 영업일 데이터로 500일 신고가 돌파 검사
+- 시장 강세 게이트 (60일 MA > 0) 확인
+- 거래대금 10억 이상 필터
+- ETF/우선주 제외
+- 신호 종목 → 콘솔 출력 + `paper_signals.csv` 누적 (멱등)
+
+**자동 호출**: `run_paper.bat` 가 매일 16:30 호출 (KIS_Paper 작업).
+
+### paper_tracker.py *(MAIN)*
+**용도**: paper_signals.csv 의 모든 신호로 가상 매매 수행. 누적 손익 + 보유 포지션 출력.
+
+**명령어**: `python paper_tracker.py`
+
+**자동 호출**: `run_paper.bat` 가 live_signal 후 호출.
+
+### debug_signal.py
+**용도**: live_signal.py 가 0건일 때 진단. 시장 게이트 / 신고가 / 거래대금 단계별 종목 수.
+
+**명령어**: `python debug_signal.py`
+
+### seed_paper_signals.py
+**용도**: paper_signals.csv 를 과거 3년치 백테스트 신호로 시드. 즉시 의미 있는 paper_tracker 결과 확인.
+
+**명령어**: `python seed_paper_signals.py` (y 입력)
+
+### strategy_engine.py
+**용도**: 14개 전략 일괄 백테스트 + 자본 시뮬 비교.
+
+**명령어**: `python strategy_engine.py`
+
+### walkforward.py
+**용도**: 3개 split (50/50, 67/33, 75/25) walk-forward 견고성 검증.
+
+**명령어**: `python walkforward.py`
+
+### capital_simulator.py
+**용도**: max_concurrent 슬롯 cap 적용 자본 시뮬. CAGR / 진짜 MDD / Sharpe.
+
+직접 호출 안 함 — 다른 모듈이 import.
+
+### strategies/ 폴더 *(NEW)*
+14개 전략 모듈:
+- `base.py` — BaseStrategy + StrategyTrade
+- `daily_loader.py` — macro_data 통합 로더
+- `_swing_base.py` — 진입 lag + 보유 청산 공통 헬퍼
+- `gap_buy.py` — 갭매매 (#4)
+- `momentum_5d.py` — 5일 모멘텀 (#8)
+- `breakout_5d.py` — 5일 신고가 (#9)
+- `rsi_reversal.py` — RSI 과매도 (#10)
+- `high_52w.py` — 52주 신고가 (#11) **베이스**
+- `volume_surge.py` — 거래량 급증 (#12)
+- `high_with_filters.py` — 신고가 + 시장 게이트 + 거래량 (high_500d_h40_MKT) ⭐ **메인**
+- `portfolio.py` — 다중 전략 결합
 
 ### backfill_history.py
 **용도**: 과거 분봉/ranking 백필. **FHKST03010230 endpoint 발견 후 1년치 과거 분봉 백필 가능** (실전 키 필수).
@@ -325,12 +508,13 @@ python backtest_swing.py
 
 | 시각 | 작업 이름 | 호출 |
 |---|---|---|
-| 매일 평일 08:30 | **KIS_KRX** | run_krx.bat → krx_collector.py both (T-1 신용/공매도) |
-| 매일 09:00~14:30 (30분 간격) | KIS_Ranking | run_collector.bat → data_collector.py today (ranking + 지수) |
-| 매일 15:40 | KIS_EOD | run_collector.bat → data_collector.py today (장 마감 후 분봉+투자자+일봉+지수분봉) |
-| 매일 16:00 | KIS_Backtest | run_backtest.bat → backtest.py |
-| 매일 평일 19:00 | **KIS_DART** | run_dart.bat → dart_collector.py today |
-| 매월 1일 02:00 | KIS_Monthly | py -3.11 monthly_xlsx_builder.py |
+| 매일 평일 08:30 | KIS_KRX | run_krx.bat → krx_collector.py both (T-1 공매도) |
+| 매일 09:00~14:30 (30분 간격) | KIS_Ranking | run_collector.bat → data_collector.py today (분봉 ranking + 지수 snapshot) |
+| 매일 15:40 | KIS_EOD | run_collector.bat → data_collector.py today (장 마감 종합) |
+| 매일 16:00 | KIS_Backtest | run_backtest.bat → backtest.py (단타 v2 별건) |
+| **매일 16:30** | **KIS_Paper** ⭐ | **run_paper.bat → live_signal + paper_tracker (메인)** |
+| 매일 평일 19:00 | KIS_DART | run_dart.bat → dart_collector.py today |
+| 매월 1일 02:00 | KIS_Monthly | monthly_xlsx_builder.py |
 
 PC가 깨어 있고 인터넷 연결되면 매일 자동 실행. 슬립 OFF + 부팅 자동 실행 필수.
 

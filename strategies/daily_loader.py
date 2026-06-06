@@ -51,6 +51,9 @@ def load_macro_daily(start_date=None, end_date=None) -> pd.DataFrame:
               "foreign_net", "inst_net"]:
         if c not in full.columns:
             full[c] = 0.0
+    # 종목명 컬럼 — pykrx_collector 가 저장 안 한 경우 빈 문자열
+    if "name" not in full.columns:
+        full["name"] = ""
 
     full = full.sort_values(["code", "date"]).reset_index(drop=True)
     return full
