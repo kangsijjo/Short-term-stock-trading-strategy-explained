@@ -19,7 +19,13 @@ class HighWithFiltersStrategy(BaseStrategy):
     def __init__(self, lookback_days=500, holding_days=40,
                  use_market_filter=True, market_ma_days=60,
                  use_volume_filter=True, vol_mult=1.5,
-                 min_trading_value=3_000_000_000, name=None):  # 10억 → 30억 (유동성 강화)
+                 min_trading_value=3_000_000_000, name=None):
+        """
+        min_trading_value 권장값 (자본 규모별):
+          - 1억 이하 베팅:  3_000_000_000 (30억, 현재 기본값)
+          - 1~5억 베팅:    5_000_000_000 (50억, 전문가 권장)
+          - 5억 이상 베팅: 10_000_000_000 (100억)
+        """
         self.lookback = lookback_days
         self.holding = holding_days
         self.use_mkt = use_market_filter
