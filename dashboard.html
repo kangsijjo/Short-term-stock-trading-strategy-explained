@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Paper Trading Dashboard — high_500d_h40_MKT</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: -apple-system, "Malgun Gothic", sans-serif;
+            margin: 0; background: #0f1115; color: #e8eaed; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 24px; margin: 0 0 4px 0; }
+    .subtitle { color: #8b939e; font-size: 13px; margin-bottom: 20px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(7, 1fr);
+                gap: 12px; margin-bottom: 20px; }
+    .kpi { background: #1a1e26; padding: 14px; border-radius: 8px;
+            border-left: 3px solid #4a9eff; }
+    .kpi h3 { font-size: 11px; color: #8b939e; margin: 0 0 4px 0;
+              text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi p { font-size: 18px; font-weight: 600; margin: 0; }
+    .card { background: #1a1e26; padding: 20px; border-radius: 8px;
+            margin-bottom: 20px; }
+    .card h2 { font-size: 16px; margin: 0 0 14px 0; color: #e8eaed; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px; color: #8b939e;
+          border-bottom: 1px solid #2a2f3a; font-weight: 500; }
+    td { padding: 8px; border-bottom: 1px solid #2a2f3a; }
+    .win { color: #4ade80; }
+    .loss { color: #f87171; }
+    .chart-wrap { height: 320px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .trade-row { cursor: pointer; }
+    .trade-row:hover { background: #20242e; }
+    .toggle { display: inline-block; transition: transform 0.15s;
+              color: #8b939e; font-size: 10px; user-select: none; }
+    .toggle.open { transform: rotate(90deg); }
+    .reason-row td { padding: 0; background: #0f1115; border-bottom: 1px solid #2a2f3a; }
+    .reason-box { padding: 12px 14px; }
+    .reason-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; }
+    .reason-grid .lbl { color: #8b939e; font-size: 11px; margin-right: 8px;
+                         text-transform: uppercase; letter-spacing: 0.3px; }
+    .reason-grid .val { color: #e8eaed; font-size: 13px; font-weight: 500; }
+    @media (max-width: 1000px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+      .grid2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 Paper Trading Dashboard</h1>
+    <div class="subtitle">메인 전략: high_500d_h40_MKT · 자본: 1,000만원 · 마지막 업데이트: 2026-06-07 18:26:28</div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><h3>최종 자본</h3><p>26,601,463원</p></div>
+      <div class="kpi"><h3>총 수익률</h3><p class="win">+166.01%</p></div>
+      <div class="kpi"><h3>CAGR</h3><p>+149.42%/년</p></div>
+      <div class="kpi"><h3>Real MDD</h3><p class="loss">-10.29%</p></div>
+      <div class="kpi"><h3>Sharpe</h3><p>2.55</p></div>
+      <div class="kpi"><h3>보유 중</h3><p>24/10</p></div>
+      <div class="kpi"><h3>누적 매매</h3><p>1,432건</p></div>
+    </div>
+
+    <div class="card">
+      <h2>💰 자본 곡선</h2>
+      <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>📈 현재 보유 포지션 (24건)</h2>
+        <table>
+          <thead><tr>
+            <th>코드</th><th>종목</th><th>진입일</th>
+            <th>진입가</th><th>현재가</th><th>평가손익</th><th>보유</th>
+          </tr></thead>
+          <tbody>
+        <tr>
+          <td>031330</td><td>에스에이엠티</td>
+          <td>20260414</td>
+          <td>6,380</td>
+          <td>15,940</td>
+          <td class="win">+149.84%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>095610</td><td>테스</td>
+          <td>20260414</td>
+          <td>86,000</td>
+          <td>139,200</td>
+          <td class="win">+61.86%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>222800</td><td>심텍</td>
+          <td>20260413</td>
+          <td>67,000</td>
+          <td>103,000</td>
+          <td class="win">+53.73%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>033640</td><td>네패스</td>
+          <td>20260414</td>
+          <td>26,800</td>
+          <td>34,600</td>
+          <td class="win">+29.10%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>082920</td><td>비츠로셀</td>
+          <td>20260414</td>
+          <td>44,150</td>
+          <td>48,650</td>
+          <td class="win">+10.19%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>052710</td><td>아모텍</td>
+          <td>20260414</td>
+          <td>22,300</td>
+          <td>24,100</td>
+          <td class="win">+8.07%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>331920</td><td>셀레믹스</td>
+          <td>20260414</td>
+          <td>17,370</td>
+          <td>14,600</td>
+          <td class="loss">-15.95%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>010170</td><td>대한광통신</td>
+          <td>20260414</td>
+          <td>21,650</td>
+          <td>18,080</td>
+          <td class="loss">-16.49%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>053260</td><td>금강철강</td>
+          <td>20260414</td>
+          <td>5,940</td>
+          <td>4,950</td>
+          <td class="loss">-16.67%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>382800</td><td>지앤비에스 에코</td>
+          <td>20260414</td>
+          <td>7,750</td>
+          <td>6,390</td>
+          <td class="loss">-17.55%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>095340</td><td>ISC</td>
+          <td>20260413</td>
+          <td>247,000</td>
+          <td>202,000</td>
+          <td class="loss">-18.22%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>183300</td><td>코미코</td>
+          <td>20260414</td>
+          <td>135,100</td>
+          <td>108,600</td>
+          <td class="loss">-19.62%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>013030</td><td>하이록코리아</td>
+          <td>20260414</td>
+          <td>43,450</td>
+          <td>34,500</td>
+          <td class="loss">-20.60%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>187870</td><td>디바이스</td>
+          <td>20260414</td>
+          <td>30,400</td>
+          <td>21,150</td>
+          <td class="loss">-30.43%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>080520</td><td>오디텍</td>
+          <td>20260413</td>
+          <td>4,680</td>
+          <td>2,830</td>
+          <td class="loss">-39.53%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>039560</td><td>다산네트웍스</td>
+          <td>20260414</td>
+          <td>5,770</td>
+          <td>3,465</td>
+          <td class="loss">-39.95%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>072950</td><td>빛샘전자</td>
+          <td>20260414</td>
+          <td>18,220</td>
+          <td>10,600</td>
+          <td class="loss">-41.82%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>065440</td><td>이루온</td>
+          <td>20260413</td>
+          <td>4,030</td>
+          <td>2,320</td>
+          <td class="loss">-42.43%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>100590</td><td>머큐리</td>
+          <td>20260413</td>
+          <td>9,220</td>
+          <td>5,290</td>
+          <td class="loss">-42.62%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>215790</td><td>이노인스트루먼트</td>
+          <td>20260413</td>
+          <td>2,735</td>
+          <td>1,560</td>
+          <td class="loss">-42.96%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>035460</td><td>기산텔레콤</td>
+          <td>20260413</td>
+          <td>5,000</td>
+          <td>2,845</td>
+          <td class="loss">-43.10%</td>
+          <td>39일</td>
+        </tr>
+        <tr>
+          <td>073540</td><td>에프알텍</td>
+          <td>20260414</td>
+          <td>5,700</td>
+          <td>2,740</td>
+          <td class="loss">-51.93%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>088800</td><td>에이스테크</td>
+          <td>20260414</td>
+          <td>6,940</td>
+          <td>2,950</td>
+          <td class="loss">-57.49%</td>
+          <td>38일</td>
+        </tr>
+        <tr>
+          <td>035460</td><td>기산텔레콤</td>
+          <td>20260414</td>
+          <td>6,800</td>
+          <td>2,845</td>
+          <td class="loss">-58.16%</td>
+          <td>38일</td>
+        </tr></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>📜 최근 매매 이력 (최근 50건) <span style="font-size:11px; color:#8b939e; font-weight:normal;">— 행 클릭 시 근거 펼침</span></h2>
+        <table>
+          <thead><tr>
+            <th style="width:24px;"></th>
+            <th>코드</th><th>종목</th><th>진입</th><th>청산</th>
+            <th>매수</th><th>매도</th><th>손익</th>
+          </tr></thead>
+          <tbody>
+        <tr class="trade-row" onclick="toggleReason(0)">
+          <td><span class="toggle" id="tg0">▶</span></td>
+          <td>033640</td><td>네패스</td>
+          <td>20260409</td>
+          <td>20260604</td>
+          <td>22,250</td>
+          <td>37,650</td>
+          <td class="win">+68.88%</td>
+        </tr>
+        <tr class="reason-row" id="rs0" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">22,800원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">22,450원 (20260407)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+1.56% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">158.4억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(1)">
+          <td><span class="toggle" id="tg1">▶</span></td>
+          <td>109080</td><td>옵티시스</td>
+          <td>20260409</td>
+          <td>20260604</td>
+          <td>16,130</td>
+          <td>11,670</td>
+          <td class="loss">-27.98%</td>
+        </tr>
+        <tr class="reason-row" id="rs1" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">16,000원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">16,120원 (20260407)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-0.74% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">405.3억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(2)">
+          <td><span class="toggle" id="tg2">▶</span></td>
+          <td>010170</td><td>대한광통신</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>13,600</td>
+          <td>19,300</td>
+          <td class="win">+41.58%</td>
+        </tr>
+        <tr class="reason-row" id="rs2" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">13,590원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">13,100원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+3.74% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">11962.1억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(3)">
+          <td><span class="toggle" id="tg3">▶</span></td>
+          <td>023160</td><td>태광</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>44,850</td>
+          <td>29,300</td>
+          <td class="loss">-35.00%</td>
+        </tr>
+        <tr class="reason-row" id="rs3" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">43,800원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">42,300원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+3.55% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">621.4억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(4)">
+          <td><span class="toggle" id="tg4">▶</span></td>
+          <td>082920</td><td>비츠로셀</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>38,000</td>
+          <td>52,500</td>
+          <td class="win">+37.83%</td>
+        </tr>
+        <tr class="reason-row" id="rs4" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">38,650원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">41,850원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-7.65% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">266.0억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(5)">
+          <td><span class="toggle" id="tg5">▶</span></td>
+          <td>091580</td><td>상신이디피</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>22,600</td>
+          <td>19,340</td>
+          <td class="loss">-14.75%</td>
+        </tr>
+        <tr class="reason-row" id="rs5" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">22,600원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">23,300원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-3.00% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">140.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(6)">
+          <td><span class="toggle" id="tg6">▶</span></td>
+          <td>109080</td><td>옵티시스</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>12,550</td>
+          <td>11,640</td>
+          <td class="loss">-7.58%</td>
+        </tr>
+        <tr class="reason-row" id="rs6" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">12,400원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">13,430원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-7.67% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">53.4억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(7)">
+          <td><span class="toggle" id="tg7">▶</span></td>
+          <td>327260</td><td>RF머트리얼즈</td>
+          <td>20260407</td>
+          <td>20260602</td>
+          <td>79,500</td>
+          <td>75,300</td>
+          <td class="loss">-5.61%</td>
+        </tr>
+        <tr class="reason-row" id="rs7" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">79,500원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">82,500원 (20260403)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-3.64% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">319.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(8)">
+          <td><span class="toggle" id="tg8">▶</span></td>
+          <td>010170</td><td>대한광통신</td>
+          <td>20260406</td>
+          <td>20260601</td>
+          <td>13,200</td>
+          <td>20,600</td>
+          <td class="win">+55.73%</td>
+        </tr>
+        <tr class="reason-row" id="rs8" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">12,740원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">11,290원 (20260402)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+12.84% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">9470.6억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(9)">
+          <td><span class="toggle" id="tg9">▶</span></td>
+          <td>065440</td><td>이루온</td>
+          <td>20260406</td>
+          <td>20260601</td>
+          <td>3,150</td>
+          <td>2,465</td>
+          <td class="loss">-22.08%</td>
+        </tr>
+        <tr class="reason-row" id="rs9" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">2,870원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">3,035원 (20260402)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-5.44% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">478.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(10)">
+          <td><span class="toggle" id="tg10">▶</span></td>
+          <td>091580</td><td>상신이디피</td>
+          <td>20260406</td>
+          <td>20260601</td>
+          <td>22,250</td>
+          <td>20,000</td>
+          <td class="loss">-10.44%</td>
+        </tr>
+        <tr class="reason-row" id="rs10" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">22,600원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">21,450원 (20260402)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+5.36% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">267.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(11)">
+          <td><span class="toggle" id="tg11">▶</span></td>
+          <td>049430</td><td>코메론</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>21,650</td>
+          <td>18,000</td>
+          <td class="loss">-17.19%</td>
+        </tr>
+        <tr class="reason-row" id="rs11" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">21,450원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">23,650원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.30% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">14.3억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(12)">
+          <td><span class="toggle" id="tg12">▶</span></td>
+          <td>065440</td><td>이루온</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>2,935</td>
+          <td>2,595</td>
+          <td class="loss">-11.91%</td>
+        </tr>
+        <tr class="reason-row" id="rs12" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">2,740원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">2,730원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+0.37% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">424.2억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(13)">
+          <td><span class="toggle" id="tg13">▶</span></td>
+          <td>073540</td><td>에프알텍</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>2,915</td>
+          <td>3,040</td>
+          <td class="win">+3.96%</td>
+        </tr>
+        <tr class="reason-row" id="rs13" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">2,820원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">3,320원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-15.06% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">17.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(14)">
+          <td><span class="toggle" id="tg14">▶</span></td>
+          <td>085910</td><td>네오티스</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>23,400</td>
+          <td>31,600</td>
+          <td class="win">+34.71%</td>
+        </tr>
+        <tr class="reason-row" id="rs14" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">22,050원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">25,500원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-13.53% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">72.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(15)">
+          <td><span class="toggle" id="tg15">▶</span></td>
+          <td>086450</td><td>동국제약</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>28,550</td>
+          <td>19,670</td>
+          <td class="loss">-31.43%</td>
+        </tr>
+        <tr class="reason-row" id="rs15" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">27,850원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">30,650원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.14% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">497.2억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(16)">
+          <td><span class="toggle" id="tg16">▶</span></td>
+          <td>160980</td><td>싸이맥스</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>26,750</td>
+          <td>32,100</td>
+          <td class="win">+19.67%</td>
+        </tr>
+        <tr class="reason-row" id="rs16" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">26,000원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">27,400원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-5.11% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">116.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(17)">
+          <td><span class="toggle" id="tg17">▶</span></td>
+          <td>218410</td><td>RFHIC</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>92,500</td>
+          <td>90,100</td>
+          <td class="loss">-2.92%</td>
+        </tr>
+        <tr class="reason-row" id="rs17" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">86,400원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">94,400원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-8.47% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1087.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(18)">
+          <td><span class="toggle" id="tg18">▶</span></td>
+          <td>230240</td><td>에치에프알</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>35,900</td>
+          <td>31,850</td>
+          <td class="loss">-11.61%</td>
+        </tr>
+        <tr class="reason-row" id="rs18" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">33,950원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">35,850원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-5.30% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">293.1억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(19)">
+          <td><span class="toggle" id="tg19">▶</span></td>
+          <td>263750</td><td>펄어비스</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>66,400</td>
+          <td>43,650</td>
+          <td class="loss">-34.59%</td>
+        </tr>
+        <tr class="reason-row" id="rs19" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">66,200원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">77,400원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-14.47% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1368.1억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(20)">
+          <td><span class="toggle" id="tg20">▶</span></td>
+          <td>420770</td><td>기가비스</td>
+          <td>20260403</td>
+          <td>20260529</td>
+          <td>87,100</td>
+          <td>141,400</td>
+          <td class="win">+62.01%</td>
+        </tr>
+        <tr class="reason-row" id="rs20" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">86,200원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">88,000원 (20260401)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-2.05% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">174.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(21)">
+          <td><span class="toggle" id="tg21">▶</span></td>
+          <td>086450</td><td>동국제약</td>
+          <td>20260402</td>
+          <td>20260528</td>
+          <td>28,250</td>
+          <td>20,150</td>
+          <td class="loss">-29.00%</td>
+        </tr>
+        <tr class="reason-row" id="rs21" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">29,000원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">24,650원 (20260331)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+17.65% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1277.2억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(22)">
+          <td><span class="toggle" id="tg22">▶</span></td>
+          <td>331920</td><td>셀레믹스</td>
+          <td>20260402</td>
+          <td>20260528</td>
+          <td>13,230</td>
+          <td>17,050</td>
+          <td class="win">+28.54%</td>
+        </tr>
+        <tr class="reason-row" id="rs22" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">13,230원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">13,640원 (20260331)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-3.01% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">59.8억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(23)">
+          <td><span class="toggle" id="tg23">▶</span></td>
+          <td>037030</td><td>파워넷</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>6,000</td>
+          <td>7,680</td>
+          <td class="win">+27.67%</td>
+        </tr>
+        <tr class="reason-row" id="rs23" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">6,200원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">5,250원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+18.10% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">2898.1억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(24)">
+          <td><span class="toggle" id="tg24">▶</span></td>
+          <td>039310</td><td>세중</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>2,020</td>
+          <td>1,340</td>
+          <td class="loss">-33.99%</td>
+        </tr>
+        <tr class="reason-row" id="rs24" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">2,060원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">2,900원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-28.97% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">30.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(25)">
+          <td><span class="toggle" id="tg25">▶</span></td>
+          <td>039740</td><td>한국정보공학</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>4,735</td>
+          <td>5,050</td>
+          <td class="win">+6.32%</td>
+        </tr>
+        <tr class="reason-row" id="rs25" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">4,370원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">4,520원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-3.32% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">69.6억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(26)">
+          <td><span class="toggle" id="tg26">▶</span></td>
+          <td>052020</td><td>에스티큐브</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>19,440</td>
+          <td>15,430</td>
+          <td class="loss">-20.96%</td>
+        </tr>
+        <tr class="reason-row" id="rs26" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">19,440원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">20,000원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-2.80% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">100.8억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(27)">
+          <td><span class="toggle" id="tg27">▶</span></td>
+          <td>078350</td><td>한양디지텍</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>28,400</td>
+          <td>40,500</td>
+          <td class="win">+42.28%</td>
+        </tr>
+        <tr class="reason-row" id="rs27" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">29,650원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">35,500원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-16.48% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">181.3억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(28)">
+          <td><span class="toggle" id="tg28">▶</span></td>
+          <td>100790</td><td>미래에셋벤처투자</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>29,350</td>
+          <td>61,100</td>
+          <td class="win">+107.85%</td>
+        </tr>
+        <tr class="reason-row" id="rs28" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">29,900원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">33,050원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.53% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1800.0억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(29)">
+          <td><span class="toggle" id="tg29">▶</span></td>
+          <td>106190</td><td>하이텍팜</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>21,700</td>
+          <td>15,810</td>
+          <td class="loss">-27.47%</td>
+        </tr>
+        <tr class="reason-row" id="rs29" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">22,300원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">25,000원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-10.80% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">39.3억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(30)">
+          <td><span class="toggle" id="tg30">▶</span></td>
+          <td>129920</td><td>대성하이텍</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>12,630</td>
+          <td>8,830</td>
+          <td class="loss">-30.42%</td>
+        </tr>
+        <tr class="reason-row" id="rs30" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">12,630원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">15,230원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-17.07% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">53.0억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(31)">
+          <td><span class="toggle" id="tg31">▶</span></td>
+          <td>215790</td><td>이노인스트루먼트</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>941</td>
+          <td>2,355</td>
+          <td class="win">+149.94%</td>
+        </tr>
+        <tr class="reason-row" id="rs31" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">941원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">1,107원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-15.00% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">246.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(32)">
+          <td><span class="toggle" id="tg32">▶</span></td>
+          <td>230240</td><td>에치에프알</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>28,000</td>
+          <td>34,500</td>
+          <td class="win">+22.88%</td>
+        </tr>
+        <tr class="reason-row" id="rs32" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">28,350원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">32,000원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-11.41% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">138.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(33)">
+          <td><span class="toggle" id="tg33">▶</span></td>
+          <td>289080</td><td>SV인베스트먼트</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>4,350</td>
+          <td>3,345</td>
+          <td class="loss">-23.43%</td>
+        </tr>
+        <tr class="reason-row" id="rs33" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">4,350원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">4,550원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-4.40% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1569.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(34)">
+          <td><span class="toggle" id="tg34">▶</span></td>
+          <td>340440</td><td>세림B&G</td>
+          <td>20260331</td>
+          <td>20260526</td>
+          <td>2,240</td>
+          <td>1,498</td>
+          <td class="loss">-33.46%</td>
+        </tr>
+        <tr class="reason-row" id="rs34" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">2,175원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">2,805원 (20260327)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-22.46% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">420.4억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(35)">
+          <td><span class="toggle" id="tg35">▶</span></td>
+          <td>000250</td><td>삼천당제약</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>1,161,000</td>
+          <td>372,000</td>
+          <td class="loss">-68.29%</td>
+        </tr>
+        <tr class="reason-row" id="rs35" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">1,158,000원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">1,143,000원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+1.31% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">2605.8억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(36)">
+          <td><span class="toggle" id="tg36">▶</span></td>
+          <td>010170</td><td>대한광통신</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>8,910</td>
+          <td>24,300</td>
+          <td class="win">+172.40%</td>
+        </tr>
+        <tr class="reason-row" id="rs36" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">9,300원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">9,500원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-2.11% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1590.5억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(37)">
+          <td><span class="toggle" id="tg37">▶</span></td>
+          <td>027360</td><td>아주IB투자</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>8,690</td>
+          <td>15,780</td>
+          <td class="win">+81.26%</td>
+        </tr>
+        <tr class="reason-row" id="rs37" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">8,920원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">8,520원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+4.69% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">6380.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(38)">
+          <td><span class="toggle" id="tg38">▶</span></td>
+          <td>050890</td><td>쏠리드</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>13,700</td>
+          <td>18,130</td>
+          <td class="win">+32.01%</td>
+        </tr>
+        <tr class="reason-row" id="rs38" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">14,340원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">16,460원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-12.88% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">1659.6억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(39)">
+          <td><span class="toggle" id="tg39">▶</span></td>
+          <td>066310</td><td>큐에스아이</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>11,820</td>
+          <td>14,000</td>
+          <td class="win">+18.11%</td>
+        </tr>
+        <tr class="reason-row" id="rs39" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">11,830원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">14,250원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-16.98% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">165.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(40)">
+          <td><span class="toggle" id="tg40">▶</span></td>
+          <td>078070</td><td>유비쿼스홀딩스</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>15,980</td>
+          <td>14,320</td>
+          <td class="loss">-10.72%</td>
+        </tr>
+        <tr class="reason-row" id="rs40" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">15,890원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">17,780원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-10.63% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">121.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(41)">
+          <td><span class="toggle" id="tg41">▶</span></td>
+          <td>083500</td><td>에프엔에스테크</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>17,300</td>
+          <td>23,200</td>
+          <td class="win">+33.77%</td>
+        </tr>
+        <tr class="reason-row" id="rs41" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">17,390원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">19,300원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.90% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">64.2억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(42)">
+          <td><span class="toggle" id="tg42">▶</span></td>
+          <td>088280</td><td>쏘닉스</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>3,470</td>
+          <td>5,240</td>
+          <td class="win">+50.68%</td>
+        </tr>
+        <tr class="reason-row" id="rs42" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">3,580원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">3,950원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.37% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">120.0억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(43)">
+          <td><span class="toggle" id="tg43">▶</span></td>
+          <td>100590</td><td>머큐리</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>5,200</td>
+          <td>7,520</td>
+          <td class="win">+44.29%</td>
+        </tr>
+        <tr class="reason-row" id="rs43" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">5,400원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">6,780원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-20.35% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">52.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(44)">
+          <td><span class="toggle" id="tg44">▶</span></td>
+          <td>115440</td><td>우리넷</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>12,950</td>
+          <td>14,120</td>
+          <td class="win">+8.70%</td>
+        </tr>
+        <tr class="reason-row" id="rs44" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">12,860원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">12,870원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-0.08% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">2276.0억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(45)">
+          <td><span class="toggle" id="tg45">▶</span></td>
+          <td>129920</td><td>대성하이텍</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>13,960</td>
+          <td>9,320</td>
+          <td class="loss">-33.57%</td>
+        </tr>
+        <tr class="reason-row" id="rs45" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">13,320원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">14,000원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-4.86% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">67.3억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(46)">
+          <td><span class="toggle" id="tg46">▶</span></td>
+          <td>131030</td><td>옵투스제약</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>18,400</td>
+          <td>7,310</td>
+          <td class="loss">-60.60%</td>
+        </tr>
+        <tr class="reason-row" id="rs46" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">18,370원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">18,100원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+1.49% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">353.4억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(47)">
+          <td><span class="toggle" id="tg47">▶</span></td>
+          <td>138080</td><td>오이솔루션</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>38,000</td>
+          <td>40,650</td>
+          <td class="win">+6.64%</td>
+        </tr>
+        <tr class="reason-row" id="rs47" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">39,950원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">44,000원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-9.20% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">474.7억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(48)">
+          <td><span class="toggle" id="tg48">▶</span></td>
+          <td>160980</td><td>싸이맥스</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>24,600</td>
+          <td>34,700</td>
+          <td class="win">+40.73%</td>
+        </tr>
+        <tr class="reason-row" id="rs48" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">25,050원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">24,950원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">+0.40% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">104.9억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        <tr class="trade-row" onclick="toggleReason(49)">
+          <td><span class="toggle" id="tg49">▶</span></td>
+          <td>213420</td><td>덕산네오룩스</td>
+          <td>20260327</td>
+          <td>20260522</td>
+          <td>51,000</td>
+          <td>45,950</td>
+          <td class="loss">-10.23%</td>
+        </tr>
+        <tr class="reason-row" id="rs49" style="display:none;">
+          <td colspan="8">
+            <div class="reason-box">
+              <div class="reason-grid">
+                <div><span class="lbl">전략</span><span class="val">high_500d_h40_MKT</span></div>
+                <div><span class="lbl">신호일 종가</span><span class="val">52,900원</span></div>
+                <div><span class="lbl">직전 500일 고점</span><span class="val">53,300원 (20260325)</span></div>
+                <div><span class="lbl">돌파율</span><span class="val">-0.75% (신호 종가 vs 직전 고점)</span></div>
+                <div><span class="lbl">거래대금</span><span class="val">184.1억원 (필터 30억 이상)</span></div>
+                <div><span class="lbl">시장 게이트</span><span class="val">KOSDAQ MA60 통과 ✅</span></div>
+              </div>
+            </div>
+          </td>
+        </tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📉 보유 종목 변동 추이 (entry 이후 일별)</h2>
+      <div class="chart-wrap"><canvas id="holdingsChart"></canvas></div>
+    </div>
+  </div>
+
+  <script>
+    function toggleReason(i) {
+      const row = document.getElementById('rs' + i);
+      const tg = document.getElementById('tg' + i);
+      if (!row) return;
+      const open = row.style.display !== 'none';
+      row.style.display = open ? 'none' : 'table-row';
+      if (tg) tg.classList.toggle('open', !open);
+    }
+
+    const eqCtx = document.getElementById('equityChart').getContext('2d');
+    new Chart(eqCtx, {
+      type: 'line',
+      data: {
+        labels: ["start", "20250704", "20250704", "20250704", "20250707", "20250707", "20250707", "20250707", "20250707", "20250707", "20250707", "20250708", "20250708", "20250708", "20250709", "20250709", "20250710", "20250710", "20250711", "20250711", "20250711", "20250711", "20250711", "20250711", "20250711", "20250714", "20250714", "20250714", "20250714", "20250715", "20250715", "20250715", "20250715", "20250715", "20250715", "20250715", "20250715", "20250716", "20250716", "20250716", "20250716", "20250717", "20250717", "20250717", "20250717", "20250717", "20250717", "20250717", "20250718", "20250718", "20250718", "20250721", "20250722", "20250722", "20250722", "20250722", "20250722", "20250722", "20250722", "20250723", "20250723", "20250723", "20250723", "20250723", "20250723", "20250724", "20250724", "20250724", "20250724", "20250725", "20250725", "20250725", "20250728", "20250728", "20250728", "20250728", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250806", "20250807", "20250807", "20250807", "20250807", "20250807", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250808", "20250811", "20250811", "20250811", "20250811", "20250811", "20250811", "20250811", "20250811", "20250811", "20250811", "20250812", "20250812", "20250812", "20250812", "20250812", "20250812", "20250812", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250813", "20250814", "20250814", "20250814", "20250814", "20250814", "20250814", "20250818", "20250818", "20250818", "20250818", "20250818", "20250818", "20250818", "20250818", "20250818", "20250820", "20250820", "20250820", "20250820", "20250820", "20250820", "20250820", "20250820", "20250821", "20250821", "20250821", "20250821", "20250821", "20250821", "20250821", "20250821", "20250821", "20250822", "20250822", "20250822", "20250822", "20250822", "20250822", "20250822", "20250822", "20250825", "20250825", "20250825", "20250825", "20250825", "20250826", "20250826", "20250826", "20250826", "20250826", "20250826", "20250827", "20250827", "20250827", "20250827", "20250827", "20250828", "20250828", "20250828", "20250828", "20250828", "20250828", "20250828", "20250901", "20250902", "20250902", "20250903", "20250903", "20250903", "20250903", "20250903", "20250903", "20250904", "20250904", "20250904", "20250904", "20250905", "20250905", "20250905", "20250905", "20250905", "20250905", "20250905", "20250905", "20250905", "20250905", "20250908", "20250908", "20250908", "20250908", "20250909", "20250909", "20250909", "20250909", "20250909", "20250909", "20250909", "20250910", "20250911", "20250911", "20250911", "20250911", "20250911", "20250911", "20250912", "20250912", "20250912", "20250912", "20250915", "20250915", "20250915", "20250916", "20250916", "20250916", "20250917", "20250917", "20250917", "20250917", "20250917", "20250918", "20250918", "20250918", "20250918", "20250918", "20250918", "20250918", "20250919", "20250919", "20250919", "20250922", "20250922", "20250922", "20250923", "20250924", "20250924", "20250924", "20250925", "20250925", "20250925", "20250926", "20250926", "20250929", "20250929", "20250929", "20250929", "20250930", "20250930", "20251001", "20251002", "20251002", "20251015", "20251015", "20251015", "20251016", "20251020", "20251021", "20251021", "20251021", "20251021", "20251022", "20251022", "20251023", "20251023", "20251023", "20251023", "20251024", "20251024", "20251024", "20251027", "20251027", "20251028", "20251028", "20251028", "20251028", "20251028", "20251028", "20251104", "20251104", "20251104", "20251104", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251105", "20251106", "20251106", "20251106", "20251106", "20251106", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251107", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251110", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251111", "20251112", "20251112", "20251112", "20251112", "20251112", "20251112", "20251112", "20251112", "20251112", "20251113", "20251113", "20251114", "20251114", "20251114", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251117", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251118", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251119", "20251120", "20251120", "20251120", "20251120", "20251120", "20251120", "20251120", "20251120", "20251120", "20251120", "20251124", "20251124", "20251124", "20251124", "20251124", "20251124", "20251124", "20251124", "20251125", "20251125", "20251125", "20251125", "20251125", "20251126", "20251127", "20251127", "20251127", "20251128", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251210", "20251211", "20251211", "20251211", "20251211", "20251212", "20251212", "20251212", "20251215", "20251215", "20251215", "20251215", "20251215", "20251216", "20251216", "20251216", "20251216", "20251216", "20251216", "20251216", "20251216", "20251217", "20251217", "20251218", "20251218", "20251218", "20251218", "20251218", "20251218", "20251218", "20251219", "20251219", "20251219", "20251219", "20251219", "20251222", "20251222", "20251222", "20251222", "20251223", "20251223", "20251223", "20251223", "20251223", "20251223", "20251223", "20251224", "20251224", "20251224", "20251224", "20251224", "20251226", "20251226", "20251226", "20251230", "20251230", "20251230", "20260106", "20260106", "20260106", "20260108", "20260108", "20260108", "20260108", "20260109", "20260109", "20260109", "20260112", "20260112", "20260112", "20260112", "20260112", "20260112", "20260112", "20260112", "20260112", "20260112", "20260113", "20260113", "20260113", "20260113", "20260113", "20260113", "20260114", "20260114", "20260115", "20260115", "20260115", "20260115", "20260115", "20260115", "20260116", "20260116", "20260116", "20260116", "20260116", "20260120", "20260120", "20260120", "20260120", "20260120", "20260120", "20260121", "20260121", "20260121", "20260121", "20260122", "20260122", "20260122", "20260122", "20260122", "20260123", "20260123", "20260123", "20260123", "20260123", "20260123", "20260126", "20260126", "20260126", "20260126", "20260126", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260127", "20260128", "20260128", "20260128", "20260128", "20260128", "20260128", "20260128", "20260128", "20260129", "20260129", "20260129", "20260129", "20260129", "20260129", "20260129", "20260129", "20260129", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260130", "20260202", "20260202", "20260202", "20260202", "20260202", "20260202", "20260202", "20260202", "20260202", "20260202", "20260203", "20260203", "20260203", "20260203", "20260203", "20260204", "20260204", "20260204", "20260204", "20260204", "20260204", "20260204", "20260204", "20260205", "20260205", "20260205", "20260205", "20260205", "20260206", "20260206", "20260206", "20260206", "20260206", "20260206", "20260209", "20260209", "20260209", "20260209", "20260209", "20260209", "20260209", "20260209", "20260209", "20260210", "20260210", "20260210", "20260210", "20260210", "20260210", "20260210", "20260210", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260211", "20260212", "20260212", "20260212", "20260212", "20260213", "20260213", "20260213", "20260224", "20260224", "20260224", "20260224", "20260224", "20260224", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260303", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260305", "20260306", "20260306", "20260306", "20260306", "20260306", "20260306", "20260306", "20260306", "20260309", "20260309", "20260309", "20260309", "20260309", "20260309", "20260310", "20260310", "20260310", "20260310", "20260310", "20260310", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260311", "20260312", "20260312", "20260312", "20260312", "20260312", "20260312", "20260312", "20260313", "20260313", "20260313", "20260313", "20260313", "20260316", "20260316", "20260316", "20260316", "20260316", "20260316", "20260316", "20260316", "20260316", "20260316", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260317", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260318", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260319", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260320", "20260323", "20260323", "20260323", "20260323", "20260323", "20260323", "20260323", "20260324", "20260324", "20260324", "20260324", "20260324", "20260324", "20260324", "20260324", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260325", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260326", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260327", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260330", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260331", "20260401", "20260401", "20260401", "20260401", "20260401", "20260401", "20260401", "20260401", "20260401", "20260401", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260402", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260403", "20260406", "20260406", "20260406", "20260406", "20260406", "20260406", "20260406", "20260407", "20260407", "20260407", "20260407", "20260407", "20260407", "20260407", "20260407", "20260407", "20260407", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260408", "20260409", "20260409", "20260409", "20260409", "20260409", "20260409", "20260409", "20260409", "20260409", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260410", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260420", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260421", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260422", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260423", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260424", "20260430", "20260430", "20260430", "20260430", "20260430", "20260430", "20260430", "20260430", "20260430", "20260430", "20260504", "20260504", "20260504", "20260504", "20260504", "20260504", "20260506", "20260506", "20260506", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260508", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260511", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260512", "20260513", "20260513", "20260513", "20260513", "20260513", "20260513", "20260513", "20260513", "20260513", "20260513", "20260514", "20260514", "20260514", "20260514", "20260514", "20260514", "20260514", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260515", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260518", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260519", "20260520", "20260520", "20260520", "20260520", "20260520", "20260520", "20260520", "20260520", "20260521", "20260521", "20260521", "20260521", "20260521", "20260521", "20260521", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260522", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260526", "20260528", "20260528", "20260529", "20260529", "20260529", "20260529", "20260529", "20260529", "20260529", "20260529", "20260529", "20260529", "20260601", "20260601", "20260601", "20260602", "20260602", "20260602", "20260602", "20260602", "20260602", "20260604", "20260604"],
+        datasets: [{
+          label: '자본 (원)',
+          data: [10000000, 10218651.0, 10397751.0, 10580798.0, 10529977.0, 10498951.0, 10835238.0, 10831938.0, 10790112.0, 11048787.0, 12032666.0, 12357144.0, 12128372.0, 12547596.0, 12048841.0, 11447541.0, 11665041.0, 11733131.0, 10983893.0, 11203961.0, 11603142.0, 12115877.0, 12342854.0, 12163517.0, 12469546.0, 12795257.0, 13080690.0, 13227868.0, 13419615.0, 13558562.0, 13611943.0, 13799722.0, 13805596.0, 14285740.0, 14202209.0, 14889818.0, 14755529.0, 14710338.0, 14830675.0, 14851796.0, 15149949.0, 15248511.0, 15316249.0, 15319985.0, 15230796.0, 15550150.0, 15541556.0, 15661874.0, 16074439.0, 16138447.0, 16206765.0, 16000468.0, 16216934.0, 16419741.0, 16722118.0, 16556571.0, 16835782.0, 16739024.0, 16713125.0, 16901606.0, 17048801.0, 17334632.0, 17569427.0, 17982949.0, 17906242.0, 17778923.0, 17680035.0, 17865647.0, 17964337.0, 18027054.0, 18066464.0, 18285755.0, 18254312.0, 18213883.0, 18128338.0, 18664016.0, 18563266.0, 18904634.0, 18861294.0, 18784064.0, 18764635.0, 18754419.0, 18586957.0, 18535791.0, 18339323.0, 18416221.0, 18549804.0, 18579938.0, 18199495.0, 18139285.0, 17970921.0, 17818848.0, 18161002.0, 18085433.0, 18096923.0, 18247323.0, 18171541.0, 18005352.0, 17924020.0, 17600952.0, 17378730.0, 17689575.0, 17489153.0, 17473151.0, 17436924.0, 17166957.0, 17118460.0, 16993094.0, 16938557.0, 17050027.0, 17039917.0, 17012059.0, 16831793.0, 16539697.0, 16501855.0, 16458349.0, 16217906.0, 16202120.0, 15968950.0, 15626067.0, 15586828.0, 15555567.0, 15467714.0, 15239527.0, 14984730.0, 15049412.0, 15175982.0, 15107262.0, 14919004.0, 14582005.0, 14593899.0, 14589120.0, 14555103.0, 14660646.0, 14700393.0, 14658866.0, 14438445.0, 14080733.0, 14217784.0, 14369961.0, 14367275.0, 14473499.0, 14360961.0, 14512741.0, 14452594.0, 14404132.0, 14406945.0, 14030940.0, 14204111.0, 14089565.0, 14015633.0, 13764292.0, 13797948.0, 13576699.0, 13297409.0, 12873694.0, 12592511.0, 12486807.0, 12450807.0, 12112390.0, 11888212.0, 11638037.0, 11322877.0, 11045354.0, 11071349.0, 10815559.0, 10992726.0, 10863635.0, 11030206.0, 10882462.0, 10556512.0, 10583599.0, 10330299.0, 9906211.0, 9709975.0, 9557061.0, 9537675.0, 9456705.0, 9408819.0, 8597649.0, 8388938.0, 7998069.0, 7884097.0, 7546748.0, 7449292.0, 8013849.0, 8011848.0, 7405968.0, 7338211.0, 7612151.0, 7231027.0, 7087164.0, 7023535.0, 7002493.0, 6935364.0, 6750928.0, 6633387.0, 6863125.0, 6735508.0, 6779527.0, 6618175.0, 6457299.0, 6259074.0, 6343292.0, 6234729.0, 5763189.0, 5626678.0, 6200470.0, 6069511.0, 5988891.0, 5933075.0, 5764339.0, 5664848.0, 5523372.0, 5324701.0, 5335263.0, 5307977.0, 5238653.0, 5298601.0, 5078148.0, 4930724.0, 4842575.0, 4188482.0, 4119127.0, 4303770.0, 4186287.0, 4674700.0, 4934148.0, 4780275.0, 4762644.0, 4617549.0, 4366160.0, 4327013.0, 4051064.0, 3815802.0, 3749371.0, 3569148.0, 3635354.0, 3789197.0, 3631308.0, 3388722.0, 3526112.0, 3628367.0, 3573180.0, 3551208.0, 3694998.0, 3462176.0, 3354361.0, 3235311.0, 3138648.0, 3134332.0, 2938887.0, 2925831.0, 2821849.0, 2806075.0, 2801108.0, 2834335.0, 2745635.0, 2581460.0, 2147001.0, 2118448.0, 2163267.0, 2115553.0, 2241253.0, 1825453.0, 1776991.0, 1635577.0, 1398150.0, 1464617.0, 847912.0, 531568.0, 366803.0, 504443.0, 576724.0, 398792.0, 695612.0, 39748.0, 398779.0, 665876.0, 833898.0, 912376.0, 1136348.0, 1133048.0, 681661.0, 801600.0, 684347.0, 850278.0, 939395.0, 884773.0, 707171.0, 660121.0, 706326.0, 779557.0, 690453.0, 798417.0, 1406509.0, 1577698.0, 1819991.0, 1712504.0, 1410086.0, 1352417.0, 1163773.0, 1601944.0, 1475443.0, 2253423.0, 4324242.0, 4212086.0, 4014500.0, 3904057.0, 3888709.0, 3992828.0, 3881533.0, 6109674.0, 5985349.0, 5549272.0, 6585018.0, 6860706.0, 7092961.0, 7145117.0, 7092294.0, 7429653.0, 7601863.0, 7703931.0, 8031390.0, 7815505.0, 9534099.0, 9537138.0, 9484214.0, 9828564.0, 9616555.0, 9522811.0, 9504309.0, 9766663.0, 9943059.0, 9892140.0, 9597140.0, 11250090.0, 10978328.0, 10708075.0, 11338795.0, 12798610.0, 12805809.0, 12732822.0, 12572412.0, 12463791.0, 12968428.0, 12847980.0, 12939065.0, 12617816.0, 13215526.0, 13446863.0, 14058948.0, 13976749.0, 13503661.0, 15299657.0, 15230658.0, 15259616.0, 15050929.0, 14895668.0, 14853171.0, 14867492.0, 15368167.0, 15136557.0, 14911397.0, 15006998.0, 15003698.0, 15086999.0, 14840517.0, 15150596.0, 15160511.0, 15753906.0, 15479512.0, 15428019.0, 15558887.0, 15392925.0, 15500190.0, 15437233.0, 15686946.0, 15607733.0, 15894707.0, 16611173.0, 16432175.0, 17182055.0, 17106905.0, 17088149.0, 16854284.0, 17240046.0, 17104878.0, 17035395.0, 16833576.0, 16844651.0, 17211778.0, 17717795.0, 17793199.0, 17732617.0, 18223528.0, 19364145.0, 19765372.0, 19413131.0, 19026078.0, 19400155.0, 19177446.0, 19589830.0, 19312690.0, 19182795.0, 19552763.0, 19169618.0, 18824636.0, 19359655.0, 18838051.0, 18701285.0, 18946548.0, 18775066.0, 19566107.0, 19617925.0, 19512425.0, 19885251.0, 20008692.0, 19676486.0, 19139604.0, 19641657.0, 19846366.0, 19499761.0, 19725412.0, 19556382.0, 19875260.0, 19627339.0, 19775790.0, 19775891.0, 19430486.0, 19736097.0, 20342286.0, 21275450.0, 21196354.0, 21108942.0, 20874872.0, 21356783.0, 21161109.0, 21483582.0, 21461295.0, 21958311.0, 22049158.0, 21889101.0, 21561477.0, 21397579.0, 21204846.0, 20975883.0, 21119874.0, 20927461.0, 20840382.0, 21182815.0, 20867158.0, 20689488.0, 21151616.0, 21645292.0, 21840257.0, 21560951.0, 21583819.0, 21784059.0, 21928907.0, 22340701.0, 22154242.0, 22170146.0, 21909828.0, 22124629.0, 22103448.0, 22019529.0, 22229878.0, 22752702.0, 23139311.0, 22996062.0, 23071465.0, 23397692.0, 23771511.0, 23670480.0, 23460582.0, 23622405.0, 23869754.0, 23786984.0, 23760877.0, 23576134.0, 24034776.0, 24298143.0, 24148215.0, 23950751.0, 23845812.0, 23685542.0, 23379956.0, 23141972.0, 23184969.0, 23013553.0, 22677753.0, 22370246.0, 22286946.0, 22384105.0, 22296213.0, 21967481.0, 21741781.0, 21376865.0, 21343239.0, 21246524.0, 22824814.0, 22565739.0, 22473181.0, 22326045.0, 22146819.0, 22117721.0, 22142108.0, 21812086.0, 21839887.0, 21820015.0, 21708987.0, 21367378.0, 21120870.0, 21290604.0, 21237813.0, 21036208.0, 21235705.0, 21416500.0, 21491288.0, 22787583.0, 23071169.0, 23231039.0, 23250727.0, 24320504.0, 24341972.0, 24084547.0, 23964808.0, 25604655.0, 25021117.0, 25140227.0, 25215490.0, 25329395.0, 25558511.0, 25587211.0, 25954574.0, 26043472.0, 25877315.0, 25943358.0, 26875772.0, 26429964.0, 26564856.0, 26461501.0, 26564070.0, 26399202.0, 26441773.0, 27267982.0, 27042634.0, 26881215.0, 27007081.0, 28740378.0, 28947536.0, 29744236.0, 29559117.0, 29823113.0, 29950389.0, 31237724.0, 31019113.0, 31100634.0, 31772334.0, 31583380.0, 32890821.0, 32893972.0, 32805906.0, 32949103.0, 32924198.0, 32870994.0, 33257782.0, 33284293.0, 33643630.0, 33356128.0, 33401184.0, 33299515.0, 33962004.0, 34306483.0, 34490326.0, 35460710.0, 35402988.0, 35357274.0, 35122509.0, 35413388.0, 35222794.0, 36055338.0, 36276581.0, 36215525.0, 36811394.0, 36829725.0, 37768417.0, 37767195.0, 38126680.0, 38654552.0, 38931842.0, 39078250.0, 43293100.0, 43509620.0, 44601607.0, 44703570.0, 45827634.0, 45877377.0, 46427796.0, 46631996.0, 51492570.0, 51341901.0, 52304731.0, 52274999.0, 52582315.0, 52675835.0, 53188859.0, 53417370.0, 53762673.0, 53941694.0, 53538394.0, 53722043.0, 53545494.0, 53600927.0, 53516736.0, 53703436.0, 53731284.0, 53762231.0, 53645723.0, 53591576.0, 54144761.0, 53913666.0, 54846842.0, 54919217.0, 54691736.0, 55550464.0, 55588572.0, 55499630.0, 55249702.0, 55063655.0, 55467506.0, 55319675.0, 55376136.0, 55871595.0, 55921377.0, 55858248.0, 55990735.0, 59121145.0, 60195281.0, 60694539.0, 62132645.0, 62628046.0, 62633388.0, 62867390.0, 62882411.0, 64358684.0, 64465554.0, 67075157.0, 67198185.0, 67112114.0, 68239383.0, 70956862.0, 74030485.0, 74304063.0, 73915305.0, 73421809.0, 74334329.0, 74624465.0, 74943602.0, 76867385.0, 76901454.0, 77511791.0, 77110742.0, 77144479.0, 77668738.0, 78461898.0, 78822541.0, 80843631.0, 82657015.0, 82929278.0, 84514214.0, 84509351.0, 84652174.0, 85343689.0, 85276151.0, 85272851.0, 85379472.0, 87509506.0, 88172062.0, 88299496.0, 89691046.0, 90126909.0, 90832640.0, 90847185.0, 90836232.0, 91546396.0, 92872508.0, 92867558.0, 92441630.0, 93109935.0, 93587037.0, 93863564.0, 93593527.0, 93740152.0, 93610514.0, 93541958.0, 93512279.0, 93488240.0, 93267670.0, 93412757.0, 93642199.0, 93346166.0, 93225823.0, 93753736.0, 94388367.0, 94699086.0, 95537675.0, 95768091.0, 95926358.0, 96476517.0, 97127086.0, 97473786.0, 97247185.0, 97360625.0, 97286078.0, 97287557.0, 96647347.0, 96930273.0, 97183592.0, 97198683.0, 97287418.0, 97100402.0, 97185741.0, 97930165.0, 98438439.0, 98037290.0, 97988118.0, 97836949.0, 97833649.0, 97785321.0, 97901812.0, 98196318.0, 98010796.0, 98083796.0, 98037018.0, 98346913.0, 98127157.0, 98667607.0, 98832825.0, 99024587.0, 99113814.0, 99257616.0, 99706916.0, 99334688.0, 98979688.0, 98865342.0, 99003956.0, 98722762.0, 98650812.0, 100244003.0, 102754612.0, 102995215.0, 103709472.0, 104184466.0, 103811122.0, 103564186.0, 103330867.0, 103739331.0, 103417281.0, 103100938.0, 102780036.0, 103014582.0, 102872496.0, 103165842.0, 102847034.0, 103254536.0, 104430024.0, 104849800.0, 104772032.0, 107088890.0, 106547223.0, 106122691.0, 106225008.0, 106437498.0, 105940061.0, 105885391.0, 106232463.0, 105678860.0, 105517814.0, 105194019.0, 105146816.0, 105141633.0, 105128366.0, 104899372.0, 106525965.0, 106163659.0, 106100118.0, 105518014.0, 105305058.0, 105318593.0, 105024948.0, 105102408.0, 104798288.0, 104388178.0, 104334769.0, 104012348.0, 103878851.0, 103896620.0, 106296340.0, 105756527.0, 105571861.0, 105570239.0, 105833076.0, 105751515.0, 105508182.0, 105419219.0, 105195164.0, 104818460.0, 104578479.0, 104411444.0, 104307188.0, 104041334.0, 103963654.0, 104410114.0, 106519718.0, 106607104.0, 106014662.0, 106049938.0, 106357905.0, 105924562.0, 105433989.0, 105238533.0, 104829020.0, 104517549.0, 105149109.0, 107530792.0, 107324874.0, 107002637.0, 107499746.0, 107737461.0, 107607655.0, 107150407.0, 107009766.0, 106986713.0, 106609545.0, 106870118.0, 106779739.0, 108333504.0, 108026399.0, 107808218.0, 107939372.0, 107536072.0, 107221578.0, 106972058.0, 108415817.0, 108179333.0, 108435376.0, 108444070.0, 108567181.0, 108608863.0, 109599133.0, 110568310.0, 112254998.0, 113078086.0, 113105778.0, 113230683.0, 113482604.0, 113405110.0, 113564038.0, 113387535.0, 113147265.0, 113207308.0, 113832355.0, 113401671.0, 113389483.0, 114024559.0, 113942515.0, 113899999.0, 113985437.0, 114381278.0, 114323364.0, 114235344.0, 113946982.0, 115160322.0, 115046670.0, 115011294.0, 114713668.0, 114743701.0, 116354397.0, 116595116.0, 116708095.0, 116509735.0, 116363802.0, 116117222.0, 116149787.0, 116475820.0, 116289796.0, 116195013.0, 116149797.0, 116570999.0, 116103081.0, 116339995.0, 116301053.0, 117062715.0, 117124271.0, 117583317.0, 117369880.0, 117344140.0, 117173889.0, 117909198.0, 117802607.0, 117453499.0, 117685251.0, 118906175.0, 119428360.0, 119276912.0, 119091031.0, 120487438.0, 120634483.0, 120648185.0, 120432119.0, 120136834.0, 120188722.0, 120031680.0, 120020250.0, 120129138.0, 120682229.0, 121489212.0, 121335284.0, 121270186.0, 121427345.0, 121343653.0, 121569794.0, 122152146.0, 121721945.0, 121957609.0, 121617214.0, 121482785.0, 121263466.0, 121909816.0, 121988193.0, 122084893.0, 122075244.0, 122060179.0, 122566071.0, 122358381.0, 122115498.0, 121853027.0, 121721974.0, 123281444.0, 124727549.0, 124952454.0, 125467325.0, 126347480.0, 126199468.0, 126015648.0, 126078427.0, 126111369.0, 127536230.0, 127526520.0, 127507835.0, 127323266.0, 127031966.0, 126730725.0, 126535701.0, 126483018.0, 126359526.0, 126737178.0, 126605916.0, 127320173.0, 127121994.0, 127028441.0, 126754749.0, 126906936.0, 126442424.0, 126470212.0, 126666160.0, 126799532.0, 126969083.0, 126888719.0, 126604597.0, 126385594.0, 126115307.0, 126791837.0, 126551211.0, 126264230.0, 126229050.0, 126278773.0, 126031405.0, 125791226.0, 126116829.0, 126905426.0, 126684033.0, 126521567.0, 126196297.0, 126342997.0, 126166800.0, 125886739.0, 126368361.0, 127034125.0, 126831627.0, 126914300.0, 127189066.0, 127216597.0, 127148482.0, 126922576.0, 126592734.0, 126653950.0, 126489360.0, 127084139.0, 126885351.0, 126681486.0, 126592100.0, 126403149.0, 126118599.0, 126030489.0, 125764320.0, 126110765.0, 125775893.0, 126288382.0, 125979527.0, 125795124.0, 125550674.0, 125793276.0, 125444098.0, 125278650.0, 125125545.0, 124995500.0, 124831461.0, 124407230.0, 124104131.0, 123806118.0, 123590073.0, 123479053.0, 123605623.0, 124394160.0, 124398007.0, 124698030.0, 124720536.0, 124540986.0, 125542242.0, 125413144.0, 125385513.0, 125452855.0, 125730083.0, 126570967.0, 126377240.0, 126246240.0, 126104929.0, 125685983.0, 126507848.0, 126726770.0, 127138317.0, 126892712.0, 127031614.0, 127435554.0, 128328617.0, 128366396.0, 129414435.0, 129307740.0, 128675469.0, 128640226.0, 128905120.0, 128559197.0, 128655897.0, 128818202.0, 128487650.0, 128840198.0, 128986898.0, 129087002.0, 128695572.0, 128431219.0, 128558938.0, 129184438.0, 128878322.0, 128442204.0, 128357272.0, 128164782.0, 127890054.0, 127880837.0, 128183407.0, 128080728.0, 127725341.0, 128256083.0, 128622411.0, 128452444.0, 128439620.0, 128087639.0, 128141780.0, 128155251.0, 128001227.0, 127820340.0, 128182502.0, 128315449.0, 128864062.0, 128656589.0, 128920852.0, 128849297.0, 129398867.0, 129099270.0, 129007269.0, 128833806.0, 128964435.0, 128963656.0, 128708894.0, 128485594.0, 128063711.0, 128044719.0, 127846329.0, 127975469.0, 128187521.0, 128127244.0, 127898835.0, 127454777.0, 127356490.0, 129795051.0, 129909398.0, 130035379.0, 130577143.0, 130736782.0, 131324391.0, 131061517.0, 131409171.0, 131285429.0, 131211274.0, 132788113.0, 133088343.0, 132936977.0, 133714987.0, 133922304.0, 134272693.0, 134098698.0, 133823295.0, 133750227.0, 133649271.0, 133483102.0, 133836945.0, 134071792.0, 134512673.0, 135120289.0, 134784323.0, 134794509.0, 134861609.0, 134774476.0, 134456990.0, 134518345.0, 134478533.0, 135173812.0, 135384798.0, 135299957.0, 135520712.0, 135623090.0, 137050935.0, 136843376.0, 137308457.0, 137127977.0, 136773397.0, 137345097.0, 137314681.0, 137400689.0, 136986556.0, 136718186.0, 136538750.0, 136394900.0, 138689920.0, 138552266.0, 138471939.0, 138288441.0, 138832102.0, 139132270.0, 139051384.0, 139691562.0, 139911667.0, 140006010.0, 140738247.0, 140832802.0, 141349658.0, 142692727.0, 142663024.0, 142315997.0, 142968271.0, 142919784.0, 142929673.0, 145235069.0, 145053619.0, 144850984.0, 145084364.0, 144708735.0, 146489123.0, 146537947.0, 146414847.0, 146554565.0, 146639957.0, 147171422.0, 147068411.0, 147251386.0, 147879453.0, 147771608.0, 147500702.0, 147323396.0, 147298406.0, 147346346.0, 147390498.0, 147782165.0, 147731824.0, 148042650.0, 147679865.0, 149185723.0, 148902853.0, 149009533.0, 149044566.0, 148664702.0, 148944860.0, 149411317.0, 149554529.0, 149880682.0, 149665020.0, 149768415.0, 149909466.0, 149920836.0, 149510088.0, 149696997.0, 150120758.0, 150012658.0, 150069473.0, 150140423.0, 150270125.0, 150132094.0, 149979541.0, 149695395.0, 149335497.0, 149194489.0, 149162533.0, 150369759.0, 150791546.0, 150702570.0, 151663737.0, 151592870.0, 151121388.0, 151398790.0, 151407517.0, 152339902.0, 151864414.0, 152046034.0, 153068334.0, 153027834.0, 153265758.0, 153470791.0, 154268396.0, 154105342.0, 154042042.0, 156138603.0, 155970932.0, 156297044.0, 156253268.0, 156782287.0, 157279400.0, 157630503.0, 157208931.0, 158355697.0, 158516033.0, 158998921.0, 158879659.0, 158708738.0, 158935687.0, 159613776.0, 159794561.0, 159699424.0, 160401042.0, 161192371.0, 161009239.0, 160822360.0, 161043550.0, 160592532.0, 163266864.0, 163435265.0, 163665298.0, 164397176.0, 164885165.0, 165109032.0, 165091975.0, 165493474.0, 165505099.0, 165497101.0, 165589720.0, 166230345.0, 165715378.0, 166025804.0, 165755971.0, 165866979.0, 165660492.0, 166276689.0, 166778986.0, 166878450.0, 166843105.0, 166972192.0, 166628629.0, 166621429.0, 166606456.0, 166546884.0, 166023584.0, 165518006.0, 165195077.0, 165479277.0, 165160310.0, 165147835.0, 165232467.0, 166138715.0, 166194800.0, 167044711.0, 167257491.0, 167389075.0, 167357721.0, 167961715.0, 168309497.0, 168783018.0, 168407694.0, 168478220.0, 169655989.0, 169825975.0, 170181791.0, 170796363.0, 172037455.0, 171631199.0, 171197949.0, 170648201.0, 170590588.0, 170715280.0, 170420980.0, 170330281.0, 170784813.0, 171277431.0, 171392035.0, 171477748.0, 171684471.0, 171310771.0, 171246750.0, 170944818.0, 171535304.0, 172384247.0, 172094798.0, 173751327.0, 173697901.0, 173939046.0, 173819467.0, 173457124.0, 174399723.0, 175156829.0, 175324188.0, 175593397.0, 175904838.0, 175961436.0, 175734150.0, 175100042.0, 175096742.0, 175147898.0, 175529598.0, 175329956.0, 175152282.0, 174859074.0, 174466315.0, 175176676.0, 174783376.0, 174673826.0, 174394028.0, 174295242.0, 174760297.0, 174567291.0, 174821134.0, 175043869.0, 174875754.0, 175241798.0, 175148308.0, 175008295.0, 174815121.0, 175219643.0, 174902190.0, 175512790.0, 175440683.0, 175179551.0, 174627130.0, 174377996.0, 174314158.0, 175058070.0, 175306070.0, 175066611.0, 174643421.0, 174493671.0, 174352411.0, 173669524.0, 175393497.0, 176206077.0, 176526135.0, 176707268.0, 176600088.0, 176937828.0, 177444615.0, 177887469.0, 177974516.0, 177638838.0, 177032821.0, 177099257.0, 177506527.0, 177404207.0, 177528493.0, 177271181.0, 177251094.0, 177527794.0, 177187860.0, 177251086.0, 177041511.0, 177464267.0, 178542739.0, 178268010.0, 177963839.0, 179463196.0, 179692039.0, 179457704.0, 179123154.0, 178833129.0, 179118566.0, 178946675.0, 178827532.0, 178867113.0, 179214241.0, 178899907.0, 179096607.0, 179067362.0, 178951248.0, 178605328.0, 179225449.0, 179782755.0, 179561995.0, 179457571.0, 179873389.0, 179523378.0, 179901657.0, 179754109.0, 179678299.0, 179622169.0, 180311003.0, 180031200.0],
+          borderColor: '#4a9eff',
+          backgroundColor: 'rgba(74,158,255,0.1)',
+          fill: true, tension: 0.1, pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#e8eaed' } } },
+        scales: {
+          x: { ticks: { color: '#8b939e', maxTicksLimit: 20 }, grid: { color: '#2a2f3a' } },
+          y: { ticks: { color: '#8b939e', callback: v => (v/10000).toFixed(0)+'만' },
+                grid: { color: '#2a2f3a' } }
+        }
+      }
+    });
+
+    const holdings = [{"code": "010170", "name": "\ub300\ud55c\uad11\ud1b5\uc2e0", "entry_date": "20260414", "entry_price": 21650.0, "series": [{"date": "20260414", "close": 20150.0, "pct": -6.93}, {"date": "20260415", "close": 19800.0, "pct": -8.55}, {"date": "20260416", "close": 15020.0, "pct": -30.62}, {"date": "20260417", "close": 15580.0, "pct": -28.04}, {"date": "20260420", "close": 15190.0, "pct": -29.84}, {"date": "20260421", "close": 15700.0, "pct": -27.48}, {"date": "20260422", "close": 15220.0, "pct": -29.7}, {"date": "20260423", "close": 14320.0, "pct": -33.86}, {"date": "20260424", "close": 13360.0, "pct": -38.29}, {"date": "20260427", "close": 16020.0, "pct": -26.0}, {"date": "20260428", "close": 15090.0, "pct": -30.3}, {"date": "20260429", "close": 15070.0, "pct": -30.39}, {"date": "20260430", "close": 15150.0, "pct": -30.02}, {"date": "20260504", "close": 17700.0, "pct": -18.24}, {"date": "20260506", "close": 18270.0, "pct": -15.61}, {"date": "20260507", "close": 21800.0, "pct": 0.69}, {"date": "20260508", "close": 22350.0, "pct": 3.23}, {"date": "20260511", "close": 27950.0, "pct": 29.1}, {"date": "20260512", "close": 29100.0, "pct": 34.41}, {"date": "20260513", "close": 24750.0, "pct": 14.32}, {"date": "20260514", "close": 24750.0, "pct": 14.32}, {"date": "20260515", "close": 23000.0, "pct": 6.24}, {"date": "20260518", "close": 23100.0, "pct": 6.7}, {"date": "20260519", "close": 21550.0, "pct": -0.46}, {"date": "20260520", "close": 22900.0, "pct": 5.77}, {"date": "20260521", "close": 23100.0, "pct": 6.7}, {"date": "20260522", "close": 24300.0, "pct": 12.24}, {"date": "20260526", "close": 27800.0, "pct": 28.41}, {"date": "20260527", "close": 27600.0, "pct": 27.48}, {"date": "20260528", "close": 23250.0, "pct": 7.39}, {"date": "20260529", "close": 22700.0, "pct": 4.85}, {"date": "20260601", "close": 20600.0, "pct": -4.85}, {"date": "20260602", "close": 19300.0, "pct": -10.85}, {"date": "20260604", "close": 20300.0, "pct": -6.24}, {"date": "20260605", "close": 18080.0, "pct": -16.49}]}, {"code": "013030", "name": "\ud558\uc774\ub85d\ucf54\ub9ac\uc544", "entry_date": "20260414", "entry_price": 43450.0, "series": [{"date": "20260414", "close": 41650.0, "pct": -4.14}, {"date": "20260415", "close": 40750.0, "pct": -6.21}, {"date": "20260416", "close": 40500.0, "pct": -6.79}, {"date": "20260417", "close": 41050.0, "pct": -5.52}, {"date": "20260420", "close": 39650.0, "pct": -8.75}, {"date": "20260421", "close": 39850.0, "pct": -8.29}, {"date": "20260422", "close": 41500.0, "pct": -4.49}, {"date": "20260423", "close": 41900.0, "pct": -3.57}, {"date": "20260424", "close": 46000.0, "pct": 5.87}, {"date": "20260427", "close": 44550.0, "pct": 2.53}, {"date": "20260428", "close": 44600.0, "pct": 2.65}, {"date": "20260429", "close": 44850.0, "pct": 3.22}, {"date": "20260430", "close": 44150.0, "pct": 1.61}, {"date": "20260504", "close": 46150.0, "pct": 6.21}, {"date": "20260506", "close": 44800.0, "pct": 3.11}, {"date": "20260507", "close": 44100.0, "pct": 1.5}, {"date": "20260508", "close": 43500.0, "pct": 0.12}, {"date": "20260511", "close": 41500.0, "pct": -4.49}, {"date": "20260512", "close": 40300.0, "pct": -7.25}, {"date": "20260513", "close": 39500.0, "pct": -9.09}, {"date": "20260514", "close": 39500.0, "pct": -9.09}, {"date": "20260515", "close": 38550.0, "pct": -11.28}, {"date": "20260518", "close": 39150.0, "pct": -9.9}, {"date": "20260519", "close": 38550.0, "pct": -11.28}, {"date": "20260520", "close": 37750.0, "pct": -13.12}, {"date": "20260521", "close": 39250.0, "pct": -9.67}, {"date": "20260522", "close": 40300.0, "pct": -7.25}, {"date": "20260526", "close": 39650.0, "pct": -8.75}, {"date": "20260527", "close": 37950.0, "pct": -12.66}, {"date": "20260528", "close": 37250.0, "pct": -14.27}, {"date": "20260529", "close": 35650.0, "pct": -17.95}, {"date": "20260601", "close": 35700.0, "pct": -17.84}, {"date": "20260602", "close": 35300.0, "pct": -18.76}, {"date": "20260604", "close": 35450.0, "pct": -18.41}, {"date": "20260605", "close": 34500.0, "pct": -20.6}]}, {"code": "031330", "name": "\uc5d0\uc2a4\uc5d0\uc774\uc5e0\ud2f0", "entry_date": "20260414", "entry_price": 6380.0, "series": [{"date": "20260414", "close": 6530.0, "pct": 2.35}, {"date": "20260415", "close": 6600.0, "pct": 3.45}, {"date": "20260416", "close": 6650.0, "pct": 4.23}, {"date": "20260417", "close": 6830.0, "pct": 7.05}, {"date": "20260420", "close": 6840.0, "pct": 7.21}, {"date": "20260421", "close": 6790.0, "pct": 6.43}, {"date": "20260422", "close": 6930.0, "pct": 8.62}, {"date": "20260423", "close": 7070.0, "pct": 10.82}, {"date": "20260424", "close": 7400.0, "pct": 15.99}, {"date": "20260427", "close": 7320.0, "pct": 14.73}, {"date": "20260428", "close": 7230.0, "pct": 13.32}, {"date": "20260429", "close": 7140.0, "pct": 11.91}, {"date": "20260430", "close": 7070.0, "pct": 10.82}, {"date": "20260504", "close": 7390.0, "pct": 15.83}, {"date": "20260506", "close": 7900.0, "pct": 23.82}, {"date": "20260507", "close": 8060.0, "pct": 26.33}, {"date": "20260508", "close": 8560.0, "pct": 34.17}, {"date": "20260511", "close": 9090.0, "pct": 42.48}, {"date": "20260512", "close": 9040.0, "pct": 41.69}, {"date": "20260513", "close": 9450.0, "pct": 48.12}, {"date": "20260514", "close": 11000.0, "pct": 72.41}, {"date": "20260515", "close": 14300.0, "pct": 124.14}, {"date": "20260518", "close": 18590.0, "pct": 191.38}, {"date": "20260519", "close": 15640.0, "pct": 145.14}, {"date": "20260520", "close": 14280.0, "pct": 123.82}, {"date": "20260521", "close": 14790.0, "pct": 131.82}, {"date": "20260522", "close": 15590.0, "pct": 144.36}, {"date": "20260526", "close": 18170.0, "pct": 184.8}, {"date": "20260527", "close": 17700.0, "pct": 177.43}, {"date": "20260528", "close": 16320.0, "pct": 155.8}, {"date": "20260529", "close": 15650.0, "pct": 145.3}, {"date": "20260601", "close": 14700.0, "pct": 130.41}, {"date": "20260602", "close": 16270.0, "pct": 155.02}, {"date": "20260604", "close": 18860.0, "pct": 195.61}, {"date": "20260605", "close": 15940.0, "pct": 149.84}]}, {"code": "033640", "name": "\ub124\ud328\uc2a4", "entry_date": "20260414", "entry_price": 26800.0, "series": [{"date": "20260414", "close": 25950.0, "pct": -3.17}, {"date": "20260415", "close": 25500.0, "pct": -4.85}, {"date": "20260416", "close": 26150.0, "pct": -2.43}, {"date": "20260417", "close": 26650.0, "pct": -0.56}, {"date": "20260420", "close": 26550.0, "pct": -0.93}, {"date": "20260421", "close": 26050.0, "pct": -2.8}, {"date": "20260422", "close": 27450.0, "pct": 2.43}, {"date": "20260423", "close": 27650.0, "pct": 3.17}, {"date": "20260424", "close": 34650.0, "pct": 29.29}, {"date": "20260427", "close": 32450.0, "pct": 21.08}, {"date": "20260428", "close": 31900.0, "pct": 19.03}, {"date": "20260429", "close": 31850.0, "pct": 18.84}, {"date": "20260430", "close": 32000.0, "pct": 19.4}, {"date": "20260504", "close": 32950.0, "pct": 22.95}, {"date": "20260506", "close": 34800.0, "pct": 29.85}, {"date": "20260507", "close": 32750.0, "pct": 22.2}, {"date": "20260508", "close": 32850.0, "pct": 22.57}, {"date": "20260511", "close": 33200.0, "pct": 23.88}, {"date": "20260512", "close": 29600.0, "pct": 10.45}, {"date": "20260513", "close": 31600.0, "pct": 17.91}, {"date": "20260514", "close": 31150.0, "pct": 16.23}, {"date": "20260515", "close": 31250.0, "pct": 16.6}, {"date": "20260518", "close": 29200.0, "pct": 8.96}, {"date": "20260519", "close": 27700.0, "pct": 3.36}, {"date": "20260520", "close": 29600.0, "pct": 10.45}, {"date": "20260521", "close": 35450.0, "pct": 32.28}, {"date": "20260522", "close": 36950.0, "pct": 37.87}, {"date": "20260526", "close": 37100.0, "pct": 38.43}, {"date": "20260527", "close": 38000.0, "pct": 41.79}, {"date": "20260528", "close": 35300.0, "pct": 31.72}, {"date": "20260529", "close": 33950.0, "pct": 26.68}, {"date": "20260601", "close": 34600.0, "pct": 29.1}, {"date": "20260602", "close": 37300.0, "pct": 39.18}, {"date": "20260604", "close": 37650.0, "pct": 40.49}, {"date": "20260605", "close": 34600.0, "pct": 29.1}]}, {"code": "035460", "name": "\uae30\uc0b0\ud154\ub808\ucf64", "entry_date": "20260413", "entry_price": 5000.0, "series": [{"date": "20260413", "close": 6030.0, "pct": 20.6}, {"date": "20260414", "close": 6200.0, "pct": 24.0}, {"date": "20260415", "close": 5850.0, "pct": 17.0}, {"date": "20260416", "close": 4720.0, "pct": -5.6}, {"date": "20260417", "close": 4560.0, "pct": -8.8}, {"date": "20260420", "close": 4420.0, "pct": -11.6}, {"date": "20260421", "close": 4220.0, "pct": -15.6}, {"date": "20260422", "close": 4350.0, "pct": -13.0}, {"date": "20260423", "close": 4000.0, "pct": -20.0}, {"date": "20260424", "close": 3990.0, "pct": -20.2}, {"date": "20260427", "close": 4200.0, "pct": -16.0}, {"date": "20260428", "close": 3705.0, "pct": -25.9}, {"date": "20260429", "close": 3710.0, "pct": -25.8}, {"date": "20260430", "close": 3835.0, "pct": -23.3}, {"date": "20260504", "close": 3890.0, "pct": -22.2}, {"date": "20260506", "close": 3905.0, "pct": -21.9}, {"date": "20260507", "close": 4050.0, "pct": -19.0}, {"date": "20260508", "close": 4030.0, "pct": -19.4}, {"date": "20260511", "close": 4390.0, "pct": -12.2}, {"date": "20260512", "close": 4020.0, "pct": -19.6}, {"date": "20260513", "close": 3720.0, "pct": -25.6}, {"date": "20260514", "close": 3725.0, "pct": -25.5}, {"date": "20260515", "close": 3600.0, "pct": -28.0}, {"date": "20260518", "close": 3465.0, "pct": -30.7}, {"date": "20260519", "close": 3380.0, "pct": -32.4}, {"date": "20260520", "close": 3480.0, "pct": -30.4}, {"date": "20260521", "close": 3525.0, "pct": -29.5}, {"date": "20260522", "close": 3680.0, "pct": -26.4}, {"date": "20260526", "close": 3780.0, "pct": -24.4}, {"date": "20260527", "close": 3500.0, "pct": -30.0}, {"date": "20260528", "close": 3245.0, "pct": -35.1}, {"date": "20260529", "close": 3120.0, "pct": -37.6}, {"date": "20260601", "close": 2945.0, "pct": -41.1}, {"date": "20260602", "close": 2880.0, "pct": -42.4}, {"date": "20260604", "close": 3145.0, "pct": -37.1}, {"date": "20260605", "close": 2845.0, "pct": -43.1}]}, {"code": "035460", "name": "\uae30\uc0b0\ud154\ub808\ucf64", "entry_date": "20260414", "entry_price": 6800.0, "series": [{"date": "20260414", "close": 6200.0, "pct": -8.82}, {"date": "20260415", "close": 5850.0, "pct": -13.97}, {"date": "20260416", "close": 4720.0, "pct": -30.59}, {"date": "20260417", "close": 4560.0, "pct": -32.94}, {"date": "20260420", "close": 4420.0, "pct": -35.0}, {"date": "20260421", "close": 4220.0, "pct": -37.94}, {"date": "20260422", "close": 4350.0, "pct": -36.03}, {"date": "20260423", "close": 4000.0, "pct": -41.18}, {"date": "20260424", "close": 3990.0, "pct": -41.32}, {"date": "20260427", "close": 4200.0, "pct": -38.24}, {"date": "20260428", "close": 3705.0, "pct": -45.51}, {"date": "20260429", "close": 3710.0, "pct": -45.44}, {"date": "20260430", "close": 3835.0, "pct": -43.6}, {"date": "20260504", "close": 3890.0, "pct": -42.79}, {"date": "20260506", "close": 3905.0, "pct": -42.57}, {"date": "20260507", "close": 4050.0, "pct": -40.44}, {"date": "20260508", "close": 4030.0, "pct": -40.74}, {"date": "20260511", "close": 4390.0, "pct": -35.44}, {"date": "20260512", "close": 4020.0, "pct": -40.88}, {"date": "20260513", "close": 3720.0, "pct": -45.29}, {"date": "20260514", "close": 3725.0, "pct": -45.22}, {"date": "20260515", "close": 3600.0, "pct": -47.06}, {"date": "20260518", "close": 3465.0, "pct": -49.04}, {"date": "20260519", "close": 3380.0, "pct": -50.29}, {"date": "20260520", "close": 3480.0, "pct": -48.82}, {"date": "20260521", "close": 3525.0, "pct": -48.16}, {"date": "20260522", "close": 3680.0, "pct": -45.88}, {"date": "20260526", "close": 3780.0, "pct": -44.41}, {"date": "20260527", "close": 3500.0, "pct": -48.53}, {"date": "20260528", "close": 3245.0, "pct": -52.28}, {"date": "20260529", "close": 3120.0, "pct": -54.12}, {"date": "20260601", "close": 2945.0, "pct": -56.69}, {"date": "20260602", "close": 2880.0, "pct": -57.65}, {"date": "20260604", "close": 3145.0, "pct": -53.75}, {"date": "20260605", "close": 2845.0, "pct": -58.16}]}, {"code": "039560", "name": "\ub2e4\uc0b0\ub124\ud2b8\uc6cd\uc2a4", "entry_date": "20260414", "entry_price": 5770.0, "series": [{"date": "20260414", "close": 5510.0, "pct": -4.51}, {"date": "20260415", "close": 5390.0, "pct": -6.59}, {"date": "20260416", "close": 5190.0, "pct": -10.05}, {"date": "20260417", "close": 5280.0, "pct": -8.49}, {"date": "20260420", "close": 5310.0, "pct": -7.97}, {"date": "20260421", "close": 5420.0, "pct": -6.07}, {"date": "20260422", "close": 5200.0, "pct": -9.88}, {"date": "20260423", "close": 5040.0, "pct": -12.65}, {"date": "20260424", "close": 5140.0, "pct": -10.92}, {"date": "20260427", "close": 5130.0, "pct": -11.09}, {"date": "20260428", "close": 4955.0, "pct": -14.12}, {"date": "20260429", "close": 5040.0, "pct": -12.65}, {"date": "20260430", "close": 5020.0, "pct": -13.0}, {"date": "20260504", "close": 5020.0, "pct": -13.0}, {"date": "20260506", "close": 4960.0, "pct": -14.04}, {"date": "20260507", "close": 5210.0, "pct": -9.71}, {"date": "20260508", "close": 5160.0, "pct": -10.57}, {"date": "20260511", "close": 5010.0, "pct": -13.17}, {"date": "20260512", "close": 4955.0, "pct": -14.12}, {"date": "20260513", "close": 4850.0, "pct": -15.94}, {"date": "20260514", "close": 4635.0, "pct": -19.67}, {"date": "20260515", "close": 4470.0, "pct": -22.53}, {"date": "20260518", "close": 4390.0, "pct": -23.92}, {"date": "20260519", "close": 4285.0, "pct": -25.74}, {"date": "20260520", "close": 4095.0, "pct": -29.03}, {"date": "20260521", "close": 4270.0, "pct": -26.0}, {"date": "20260522", "close": 4410.0, "pct": -23.57}, {"date": "20260526", "close": 4240.0, "pct": -26.52}, {"date": "20260527", "close": 4055.0, "pct": -29.72}, {"date": "20260528", "close": 3880.0, "pct": -32.76}, {"date": "20260529", "close": 3860.0, "pct": -33.1}, {"date": "20260601", "close": 3690.0, "pct": -36.05}, {"date": "20260602", "close": 3540.0, "pct": -38.65}, {"date": "20260604", "close": 3500.0, "pct": -39.34}, {"date": "20260605", "close": 3465.0, "pct": -39.95}]}, {"code": "052710", "name": "\uc544\ubaa8\ud14d", "entry_date": "20260414", "entry_price": 22300.0, "series": [{"date": "20260414", "close": 23250.0, "pct": 4.26}, {"date": "20260415", "close": 23000.0, "pct": 3.14}, {"date": "20260416", "close": 25000.0, "pct": 12.11}, {"date": "20260417", "close": 25900.0, "pct": 16.14}, {"date": "20260420", "close": 24300.0, "pct": 8.97}, {"date": "20260421", "close": 25200.0, "pct": 13.0}, {"date": "20260422", "close": 27950.0, "pct": 25.34}, {"date": "20260423", "close": 24150.0, "pct": 8.3}, {"date": "20260424", "close": 23600.0, "pct": 5.83}, {"date": "20260427", "close": 24550.0, "pct": 10.09}, {"date": "20260428", "close": 22950.0, "pct": 2.91}, {"date": "20260429", "close": 23700.0, "pct": 6.28}, {"date": "20260430", "close": 22300.0, "pct": 0.0}, {"date": "20260504", "close": 24400.0, "pct": 9.42}, {"date": "20260506", "close": 22800.0, "pct": 2.24}, {"date": "20260507", "close": 21500.0, "pct": -3.59}, {"date": "20260508", "close": 20850.0, "pct": -6.5}, {"date": "20260511", "close": 19900.0, "pct": -10.76}, {"date": "20260512", "close": 20300.0, "pct": -8.97}, {"date": "20260513", "close": 20700.0, "pct": -7.17}, {"date": "20260514", "close": 20700.0, "pct": -7.17}, {"date": "20260515", "close": 19390.0, "pct": -13.05}, {"date": "20260518", "close": 17140.0, "pct": -23.14}, {"date": "20260519", "close": 16880.0, "pct": -24.3}, {"date": "20260520", "close": 17690.0, "pct": -20.67}, {"date": "20260521", "close": 19520.0, "pct": -12.47}, {"date": "20260522", "close": 22800.0, "pct": 2.24}, {"date": "20260526", "close": 29600.0, "pct": 32.74}, {"date": "20260527", "close": 29850.0, "pct": 33.86}, {"date": "20260528", "close": 30200.0, "pct": 35.43}, {"date": "20260529", "close": 28400.0, "pct": 27.35}, {"date": "20260601", "close": 23850.0, "pct": 6.95}, {"date": "20260602", "close": 21300.0, "pct": -4.48}, {"date": "20260604", "close": 24800.0, "pct": 11.21}, {"date": "20260605", "close": 24100.0, "pct": 8.07}]}, {"code": "053260", "name": "\uae08\uac15\ucca0\uac15", "entry_date": "20260414", "entry_price": 5940.0, "series": [{"date": "20260414", "close": 6120.0, "pct": 3.03}, {"date": "20260415", "close": 6010.0, "pct": 1.18}, {"date": "20260416", "close": 6090.0, "pct": 2.53}, {"date": "20260417", "close": 5530.0, "pct": -6.9}, {"date": "20260420", "close": 6320.0, "pct": 6.4}, {"date": "20260421", "close": 6400.0, "pct": 7.74}, {"date": "20260422", "close": 6170.0, "pct": 3.87}, {"date": "20260423", "close": 6040.0, "pct": 1.68}, {"date": "20260424", "close": 5810.0, "pct": -2.19}, {"date": "20260427", "close": 5860.0, "pct": -1.35}, {"date": "20260428", "close": 7610.0, "pct": 28.11}, {"date": "20260429", "close": 6700.0, "pct": 12.79}, {"date": "20260430", "close": 6400.0, "pct": 7.74}, {"date": "20260504", "close": 6810.0, "pct": 14.65}, {"date": "20260506", "close": 6670.0, "pct": 12.29}, {"date": "20260507", "close": 6640.0, "pct": 11.78}, {"date": "20260508", "close": 6050.0, "pct": 1.85}, {"date": "20260511", "close": 5640.0, "pct": -5.05}, {"date": "20260512", "close": 5660.0, "pct": -4.71}, {"date": "20260513", "close": 5570.0, "pct": -6.23}, {"date": "20260514", "close": 5560.0, "pct": -6.4}, {"date": "20260515", "close": 5510.0, "pct": -7.24}, {"date": "20260518", "close": 5650.0, "pct": -4.88}, {"date": "20260519", "close": 5430.0, "pct": -8.59}, {"date": "20260520", "close": 5240.0, "pct": -11.78}, {"date": "20260521", "close": 5260.0, "pct": -11.45}, {"date": "20260522", "close": 5510.0, "pct": -7.24}, {"date": "20260526", "close": 5810.0, "pct": -2.19}, {"date": "20260527", "close": 5770.0, "pct": -2.86}, {"date": "20260528", "close": 5800.0, "pct": -2.36}, {"date": "20260529", "close": 5990.0, "pct": 0.84}, {"date": "20260601", "close": 6140.0, "pct": 3.37}, {"date": "20260602", "close": 6040.0, "pct": 1.68}, {"date": "20260604", "close": 5380.0, "pct": -9.43}, {"date": "20260605", "close": 4950.0, "pct": -16.67}]}, {"code": "065440", "name": "\uc774\ub8e8\uc628", "entry_date": "20260413", "entry_price": 4030.0, "series": [{"date": "20260413", "close": 4420.0, "pct": 9.68}, {"date": "20260414", "close": 4340.0, "pct": 7.69}, {"date": "20260415", "close": 4325.0, "pct": 7.32}, {"date": "20260416", "close": 3250.0, "pct": -19.35}, {"date": "20260417", "close": 3440.0, "pct": -14.64}, {"date": "20260420", "close": 3440.0, "pct": -14.64}, {"date": "20260421", "close": 3520.0, "pct": -12.66}, {"date": "20260422", "close": 3845.0, "pct": -4.59}, {"date": "20260423", "close": 3855.0, "pct": -4.34}, {"date": "20260424", "close": 3825.0, "pct": -5.09}, {"date": "20260427", "close": 3755.0, "pct": -6.82}, {"date": "20260428", "close": 3310.0, "pct": -17.87}, {"date": "20260429", "close": 3380.0, "pct": -16.13}, {"date": "20260430", "close": 4010.0, "pct": -0.5}, {"date": "20260504", "close": 4055.0, "pct": 0.62}, {"date": "20260506", "close": 3875.0, "pct": -3.85}, {"date": "20260507", "close": 3970.0, "pct": -1.49}, {"date": "20260508", "close": 3845.0, "pct": -4.59}, {"date": "20260511", "close": 3950.0, "pct": -1.99}, {"date": "20260512", "close": 4845.0, "pct": 20.22}, {"date": "20260513", "close": 4515.0, "pct": 12.03}, {"date": "20260514", "close": 4120.0, "pct": 2.23}, {"date": "20260515", "close": 3570.0, "pct": -11.41}, {"date": "20260518", "close": 3440.0, "pct": -14.64}, {"date": "20260519", "close": 3240.0, "pct": -19.6}, {"date": "20260520", "close": 3195.0, "pct": -20.72}, {"date": "20260521", "close": 3310.0, "pct": -17.87}, {"date": "20260522", "close": 3385.0, "pct": -16.0}, {"date": "20260526", "close": 3330.0, "pct": -17.37}, {"date": "20260527", "close": 2945.0, "pct": -26.92}, {"date": "20260528", "close": 2790.0, "pct": -30.77}, {"date": "20260529", "close": 2595.0, "pct": -35.61}, {"date": "20260601", "close": 2465.0, "pct": -38.83}, {"date": "20260602", "close": 2325.0, "pct": -42.31}, {"date": "20260604", "close": 2495.0, "pct": -38.09}, {"date": "20260605", "close": 2320.0, "pct": -42.43}]}, {"code": "072950", "name": "\ube5b\uc0d8\uc804\uc790", "entry_date": "20260414", "entry_price": 18220.0, "series": [{"date": "20260414", "close": 18220.0, "pct": 0.0}, {"date": "20260415", "close": 23650.0, "pct": 29.8}, {"date": "20260416", "close": 16600.0, "pct": -8.89}, {"date": "20260417", "close": 15610.0, "pct": -14.32}, {"date": "20260420", "close": 15020.0, "pct": -17.56}, {"date": "20260421", "close": 14000.0, "pct": -23.16}, {"date": "20260422", "close": 13050.0, "pct": -28.38}, {"date": "20260423", "close": 12420.0, "pct": -31.83}, {"date": "20260424", "close": 12760.0, "pct": -29.97}, {"date": "20260427", "close": 13780.0, "pct": -24.37}, {"date": "20260428", "close": 13010.0, "pct": -28.59}, {"date": "20260429", "close": 12830.0, "pct": -29.58}, {"date": "20260430", "close": 12110.0, "pct": -33.53}, {"date": "20260504", "close": 12970.0, "pct": -28.81}, {"date": "20260506", "close": 13130.0, "pct": -27.94}, {"date": "20260507", "close": 17060.0, "pct": -6.37}, {"date": "20260508", "close": 16190.0, "pct": -11.14}, {"date": "20260511", "close": 17890.0, "pct": -1.81}, {"date": "20260512", "close": 16910.0, "pct": -7.19}, {"date": "20260513", "close": 15290.0, "pct": -16.08}, {"date": "20260514", "close": 17700.0, "pct": -2.85}, {"date": "20260515", "close": 15320.0, "pct": -15.92}, {"date": "20260518", "close": 14470.0, "pct": -20.58}, {"date": "20260519", "close": 13070.0, "pct": -28.27}, {"date": "20260520", "close": 14080.0, "pct": -22.72}, {"date": "20260521", "close": 14100.0, "pct": -22.61}, {"date": "20260522", "close": 15760.0, "pct": -13.5}, {"date": "20260526", "close": 16550.0, "pct": -9.17}, {"date": "20260527", "close": 14490.0, "pct": -20.47}, {"date": "20260528", "close": 12980.0, "pct": -28.76}, {"date": "20260529", "close": 12030.0, "pct": -33.97}, {"date": "20260601", "close": 11600.0, "pct": -36.33}, {"date": "20260602", "close": 10910.0, "pct": -40.12}, {"date": "20260604", "close": 11400.0, "pct": -37.43}, {"date": "20260605", "close": 10600.0, "pct": -41.82}]}, {"code": "073540", "name": "\uc5d0\ud504\uc54c\ud14d", "entry_date": "20260414", "entry_price": 5700.0, "series": [{"date": "20260414", "close": 6440.0, "pct": 12.98}, {"date": "20260415", "close": 5870.0, "pct": 2.98}, {"date": "20260416", "close": 4655.0, "pct": -18.33}, {"date": "20260417", "close": 4985.0, "pct": -12.54}, {"date": "20260420", "close": 4850.0, "pct": -14.91}, {"date": "20260421", "close": 4620.0, "pct": -18.95}, {"date": "20260422", "close": 4575.0, "pct": -19.74}, {"date": "20260423", "close": 4290.0, "pct": -24.74}, {"date": "20260424", "close": 4520.0, "pct": -20.7}, {"date": "20260427", "close": 4635.0, "pct": -18.68}, {"date": "20260428", "close": 4255.0, "pct": -25.35}, {"date": "20260429", "close": 3995.0, "pct": -29.91}, {"date": "20260430", "close": 4060.0, "pct": -28.77}, {"date": "20260504", "close": 4125.0, "pct": -27.63}, {"date": "20260506", "close": 4070.0, "pct": -28.6}, {"date": "20260507", "close": 4180.0, "pct": -26.67}, {"date": "20260508", "close": 4000.0, "pct": -29.82}, {"date": "20260511", "close": 4235.0, "pct": -25.7}, {"date": "20260512", "close": 3960.0, "pct": -30.53}, {"date": "20260513", "close": 3865.0, "pct": -32.19}, {"date": "20260514", "close": 3730.0, "pct": -34.56}, {"date": "20260515", "close": 3550.0, "pct": -37.72}, {"date": "20260518", "close": 3535.0, "pct": -37.98}, {"date": "20260519", "close": 3445.0, "pct": -39.56}, {"date": "20260520", "close": 3370.0, "pct": -40.88}, {"date": "20260521", "close": 3285.0, "pct": -42.37}, {"date": "20260522", "close": 3550.0, "pct": -37.72}, {"date": "20260526", "close": 3550.0, "pct": -37.72}, {"date": "20260527", "close": 3190.0, "pct": -44.04}, {"date": "20260528", "close": 3085.0, "pct": -45.88}, {"date": "20260529", "close": 3040.0, "pct": -46.67}, {"date": "20260601", "close": 2750.0, "pct": -51.75}, {"date": "20260602", "close": 2945.0, "pct": -48.33}, {"date": "20260604", "close": 2900.0, "pct": -49.12}, {"date": "20260605", "close": 2740.0, "pct": -51.93}]}, {"code": "080520", "name": "\uc624\ub514\ud14d", "entry_date": "20260413", "entry_price": 4680.0, "series": [{"date": "20260413", "close": 5100.0, "pct": 8.97}, {"date": "20260414", "close": 5030.0, "pct": 7.48}, {"date": "20260415", "close": 4905.0, "pct": 4.81}, {"date": "20260416", "close": 4380.0, "pct": -6.41}, {"date": "20260417", "close": 4340.0, "pct": -7.26}, {"date": "20260420", "close": 4310.0, "pct": -7.91}, {"date": "20260421", "close": 4195.0, "pct": -10.36}, {"date": "20260422", "close": 4375.0, "pct": -6.52}, {"date": "20260423", "close": 4315.0, "pct": -7.8}, {"date": "20260424", "close": 4470.0, "pct": -4.49}, {"date": "20260427", "close": 4450.0, "pct": -4.91}, {"date": "20260428", "close": 4270.0, "pct": -8.76}, {"date": "20260429", "close": 4335.0, "pct": -7.37}, {"date": "20260430", "close": 4160.0, "pct": -11.11}, {"date": "20260504", "close": 4365.0, "pct": -6.73}, {"date": "20260506", "close": 4390.0, "pct": -6.2}, {"date": "20260507", "close": 4395.0, "pct": -6.09}, {"date": "20260508", "close": 4270.0, "pct": -8.76}, {"date": "20260511", "close": 4270.0, "pct": -8.76}, {"date": "20260512", "close": 4145.0, "pct": -11.43}, {"date": "20260513", "close": 4040.0, "pct": -13.68}, {"date": "20260514", "close": 4020.0, "pct": -14.1}, {"date": "20260515", "close": 3770.0, "pct": -19.44}, {"date": "20260518", "close": 3590.0, "pct": -23.29}, {"date": "20260519", "close": 3580.0, "pct": -23.5}, {"date": "20260520", "close": 3405.0, "pct": -27.24}, {"date": "20260521", "close": 3580.0, "pct": -23.5}, {"date": "20260522", "close": 3565.0, "pct": -23.82}, {"date": "20260526", "close": 3495.0, "pct": -25.32}, {"date": "20260527", "close": 3290.0, "pct": -29.7}, {"date": "20260528", "close": 3295.0, "pct": -29.59}, {"date": "20260529", "close": 3155.0, "pct": -32.59}, {"date": "20260601", "close": 3005.0, "pct": -35.79}, {"date": "20260602", "close": 2915.0, "pct": -37.71}, {"date": "20260604", "close": 2945.0, "pct": -37.07}, {"date": "20260605", "close": 2830.0, "pct": -39.53}]}, {"code": "082920", "name": "\ube44\uce20\ub85c\uc140", "entry_date": "20260414", "entry_price": 44150.0, "series": [{"date": "20260414", "close": 44200.0, "pct": 0.11}, {"date": "20260415", "close": 50400.0, "pct": 14.16}, {"date": "20260416", "close": 56500.0, "pct": 27.97}, {"date": "20260417", "close": 56300.0, "pct": 27.52}, {"date": "20260420", "close": 57500.0, "pct": 30.24}, {"date": "20260421", "close": 57800.0, "pct": 30.92}, {"date": "20260422", "close": 56600.0, "pct": 28.2}, {"date": "20260423", "close": 52100.0, "pct": 18.01}, {"date": "20260424", "close": 57200.0, "pct": 29.56}, {"date": "20260427", "close": 54000.0, "pct": 22.31}, {"date": "20260428", "close": 53200.0, "pct": 20.5}, {"date": "20260429", "close": 54900.0, "pct": 24.35}, {"date": "20260430", "close": 57000.0, "pct": 29.11}, {"date": "20260504", "close": 57500.0, "pct": 30.24}, {"date": "20260506", "close": 57000.0, "pct": 29.11}, {"date": "20260507", "close": 59000.0, "pct": 33.64}, {"date": "20260508", "close": 59000.0, "pct": 33.64}, {"date": "20260511", "close": 64100.0, "pct": 45.19}, {"date": "20260512", "close": 60900.0, "pct": 37.94}, {"date": "20260513", "close": 61700.0, "pct": 39.75}, {"date": "20260514", "close": 60300.0, "pct": 36.58}, {"date": "20260515", "close": 53000.0, "pct": 20.05}, {"date": "20260518", "close": 53200.0, "pct": 20.5}, {"date": "20260519", "close": 53200.0, "pct": 20.5}, {"date": "20260520", "close": 53900.0, "pct": 22.08}, {"date": "20260521", "close": 52000.0, "pct": 17.78}, {"date": "20260522", "close": 53700.0, "pct": 21.63}, {"date": "20260526", "close": 58000.0, "pct": 31.37}, {"date": "20260527", "close": 55300.0, "pct": 25.25}, {"date": "20260528", "close": 52800.0, "pct": 19.59}, {"date": "20260529", "close": 52600.0, "pct": 19.14}, {"date": "20260601", "close": 52000.0, "pct": 17.78}, {"date": "20260602", "close": 52500.0, "pct": 18.91}, {"date": "20260604", "close": 50400.0, "pct": 14.16}, {"date": "20260605", "close": 48650.0, "pct": 10.19}]}, {"code": "088800", "name": "\uc5d0\uc774\uc2a4\ud14c\ud06c", "entry_date": "20260414", "entry_price": 6940.0, "series": [{"date": "20260414", "close": 6720.0, "pct": -3.17}, {"date": "20260415", "close": 6230.0, "pct": -10.23}, {"date": "20260416", "close": 5580.0, "pct": -19.6}, {"date": "20260417", "close": 5550.0, "pct": -20.03}, {"date": "20260420", "close": 5460.0, "pct": -21.33}, {"date": "20260421", "close": 5270.0, "pct": -24.06}, {"date": "20260422", "close": 5100.0, "pct": -26.51}, {"date": "20260423", "close": 4945.0, "pct": -28.75}, {"date": "20260424", "close": 4770.0, "pct": -31.27}, {"date": "20260427", "close": 4995.0, "pct": -28.03}, {"date": "20260428", "close": 4710.0, "pct": -32.13}, {"date": "20260429", "close": 4730.0, "pct": -31.84}, {"date": "20260430", "close": 4680.0, "pct": -32.56}, {"date": "20260504", "close": 4995.0, "pct": -28.03}, {"date": "20260506", "close": 4825.0, "pct": -30.48}, {"date": "20260507", "close": 4900.0, "pct": -29.39}, {"date": "20260508", "close": 4790.0, "pct": -30.98}, {"date": "20260511", "close": 4605.0, "pct": -33.65}, {"date": "20260512", "close": 4385.0, "pct": -36.82}, {"date": "20260513", "close": 4230.0, "pct": -39.05}, {"date": "20260514", "close": 4145.0, "pct": -40.27}, {"date": "20260515", "close": 4005.0, "pct": -42.29}, {"date": "20260518", "close": 3975.0, "pct": -42.72}, {"date": "20260519", "close": 3845.0, "pct": -44.6}, {"date": "20260520", "close": 3790.0, "pct": -45.39}, {"date": "20260521", "close": 3920.0, "pct": -43.52}, {"date": "20260522", "close": 4220.0, "pct": -39.19}, {"date": "20260526", "close": 4105.0, "pct": -40.85}, {"date": "20260527", "close": 3820.0, "pct": -44.96}, {"date": "20260528", "close": 3640.0, "pct": -47.55}, {"date": "20260529", "close": 3480.0, "pct": -49.86}, {"date": "20260601", "close": 3265.0, "pct": -52.95}, {"date": "20260602", "close": 3120.0, "pct": -55.04}, {"date": "20260604", "close": 3220.0, "pct": -53.6}, {"date": "20260605", "close": 2950.0, "pct": -57.49}]}, {"code": "095340", "name": "ISC", "entry_date": "20260413", "entry_price": 247000.0, "series": [{"date": "20260413", "close": 216500.0, "pct": -12.35}, {"date": "20260414", "close": 223000.0, "pct": -9.72}, {"date": "20260415", "close": 224500.0, "pct": -9.11}, {"date": "20260416", "close": 222000.0, "pct": -10.12}, {"date": "20260417", "close": 229000.0, "pct": -7.29}, {"date": "20260420", "close": 230000.0, "pct": -6.88}, {"date": "20260421", "close": 238000.0, "pct": -3.64}, {"date": "20260422", "close": 239500.0, "pct": -3.04}, {"date": "20260423", "close": 229000.0, "pct": -7.29}, {"date": "20260424", "close": 235000.0, "pct": -4.86}, {"date": "20260427", "close": 240500.0, "pct": -2.63}, {"date": "20260428", "close": 237500.0, "pct": -3.85}, {"date": "20260429", "close": 244000.0, "pct": -1.21}, {"date": "20260430", "close": 242500.0, "pct": -1.82}, {"date": "20260504", "close": 247500.0, "pct": 0.2}, {"date": "20260506", "close": 256000.0, "pct": 3.64}, {"date": "20260507", "close": 247000.0, "pct": 0.0}, {"date": "20260508", "close": 253500.0, "pct": 2.63}, {"date": "20260511", "close": 243500.0, "pct": -1.42}, {"date": "20260512", "close": 248500.0, "pct": 0.61}, {"date": "20260513", "close": 244000.0, "pct": -1.21}, {"date": "20260514", "close": 247500.0, "pct": 0.2}, {"date": "20260515", "close": 224500.0, "pct": -9.11}, {"date": "20260518", "close": 209000.0, "pct": -15.38}, {"date": "20260519", "close": 197300.0, "pct": -20.12}, {"date": "20260520", "close": 194400.0, "pct": -21.3}, {"date": "20260521", "close": 219500.0, "pct": -11.13}, {"date": "20260522", "close": 210000.0, "pct": -14.98}, {"date": "20260526", "close": 240000.0, "pct": -2.83}, {"date": "20260527", "close": 232000.0, "pct": -6.07}, {"date": "20260528", "close": 213000.0, "pct": -13.77}, {"date": "20260529", "close": 202500.0, "pct": -18.02}, {"date": "20260601", "close": 209500.0, "pct": -15.18}, {"date": "20260602", "close": 211500.0, "pct": -14.37}, {"date": "20260604", "close": 214000.0, "pct": -13.36}, {"date": "20260605", "close": 202000.0, "pct": -18.22}]}, {"code": "095610", "name": "\ud14c\uc2a4", "entry_date": "20260414", "entry_price": 86000.0, "series": [{"date": "20260414", "close": 83800.0, "pct": -2.56}, {"date": "20260415", "close": 90100.0, "pct": 4.77}, {"date": "20260416", "close": 89800.0, "pct": 4.42}, {"date": "20260417", "close": 88000.0, "pct": 2.33}, {"date": "20260420", "close": 90300.0, "pct": 5.0}, {"date": "20260421", "close": 88600.0, "pct": 3.02}, {"date": "20260422", "close": 93300.0, "pct": 8.49}, {"date": "20260423", "close": 89600.0, "pct": 4.19}, {"date": "20260424", "close": 89700.0, "pct": 4.3}, {"date": "20260427", "close": 88500.0, "pct": 2.91}, {"date": "20260428", "close": 86600.0, "pct": 0.7}, {"date": "20260429", "close": 86600.0, "pct": 0.7}, {"date": "20260430", "close": 84000.0, "pct": -2.33}, {"date": "20260504", "close": 86700.0, "pct": 0.81}, {"date": "20260506", "close": 89700.0, "pct": 4.3}, {"date": "20260507", "close": 89200.0, "pct": 3.72}, {"date": "20260508", "close": 92900.0, "pct": 8.02}, {"date": "20260511", "close": 105200.0, "pct": 22.33}, {"date": "20260512", "close": 108600.0, "pct": 26.28}, {"date": "20260513", "close": 122500.0, "pct": 42.44}, {"date": "20260514", "close": 123900.0, "pct": 44.07}, {"date": "20260515", "close": 118100.0, "pct": 37.33}, {"date": "20260518", "close": 116100.0, "pct": 35.0}, {"date": "20260519", "close": 112400.0, "pct": 30.7}, {"date": "20260520", "close": 116400.0, "pct": 35.35}, {"date": "20260521", "close": 120100.0, "pct": 39.65}, {"date": "20260522", "close": 129000.0, "pct": 50.0}, {"date": "20260526", "close": 126800.0, "pct": 47.44}, {"date": "20260527", "close": 119000.0, "pct": 38.37}, {"date": "20260528", "close": 122300.0, "pct": 42.21}, {"date": "20260529", "close": 119100.0, "pct": 38.49}, {"date": "20260601", "close": 111300.0, "pct": 29.42}, {"date": "20260602", "close": 104600.0, "pct": 21.63}, {"date": "20260604", "close": 135900.0, "pct": 58.02}, {"date": "20260605", "close": 139200.0, "pct": 61.86}]}, {"code": "100590", "name": "\uba38\ud050\ub9ac", "entry_date": "20260413", "entry_price": 9220.0, "series": [{"date": "20260413", "close": 11320.0, "pct": 22.78}, {"date": "20260414", "close": 11000.0, "pct": 19.31}, {"date": "20260415", "close": 10350.0, "pct": 12.26}, {"date": "20260416", "close": 8050.0, "pct": -12.69}, {"date": "20260417", "close": 7680.0, "pct": -16.7}, {"date": "20260420", "close": 7450.0, "pct": -19.2}, {"date": "20260421", "close": 7140.0, "pct": -22.56}, {"date": "20260422", "close": 6820.0, "pct": -26.03}, {"date": "20260423", "close": 6390.0, "pct": -30.69}, {"date": "20260424", "close": 6470.0, "pct": -29.83}, {"date": "20260427", "close": 6630.0, "pct": -28.09}, {"date": "20260428", "close": 6240.0, "pct": -32.32}, {"date": "20260429", "close": 6500.0, "pct": -29.5}, {"date": "20260430", "close": 6200.0, "pct": -32.75}, {"date": "20260504", "close": 7410.0, "pct": -19.63}, {"date": "20260506", "close": 8880.0, "pct": -3.69}, {"date": "20260507", "close": 9900.0, "pct": 7.38}, {"date": "20260508", "close": 9340.0, "pct": 1.3}, {"date": "20260511", "close": 10850.0, "pct": 17.68}, {"date": "20260512", "close": 9670.0, "pct": 4.88}, {"date": "20260513", "close": 9280.0, "pct": 0.65}, {"date": "20260514", "close": 8410.0, "pct": -8.79}, {"date": "20260515", "close": 7400.0, "pct": -19.74}, {"date": "20260518", "close": 7130.0, "pct": -22.67}, {"date": "20260519", "close": 7020.0, "pct": -23.86}, {"date": "20260520", "close": 7200.0, "pct": -21.91}, {"date": "20260521", "close": 7220.0, "pct": -21.69}, {"date": "20260522", "close": 7520.0, "pct": -18.44}, {"date": "20260526", "close": 8220.0, "pct": -10.85}, {"date": "20260527", "close": 7030.0, "pct": -23.75}, {"date": "20260528", "close": 6520.0, "pct": -29.28}, {"date": "20260529", "close": 6100.0, "pct": -33.84}, {"date": "20260601", "close": 5720.0, "pct": -37.96}, {"date": "20260602", "close": 5380.0, "pct": -41.65}, {"date": "20260604", "close": 5720.0, "pct": -37.96}, {"date": "20260605", "close": 5290.0, "pct": -42.62}]}, {"code": "183300", "name": "\ucf54\ubbf8\ucf54", "entry_date": "20260414", "entry_price": 135100.0, "series": [{"date": "20260414", "close": 132500.0, "pct": -1.92}, {"date": "20260415", "close": 131900.0, "pct": -2.37}, {"date": "20260416", "close": 151000.0, "pct": 11.77}, {"date": "20260417", "close": 154900.0, "pct": 14.66}, {"date": "20260420", "close": 152900.0, "pct": 13.18}, {"date": "20260421", "close": 152500.0, "pct": 12.88}, {"date": "20260422", "close": 151500.0, "pct": 12.14}, {"date": "20260423", "close": 149500.0, "pct": 10.66}, {"date": "20260424", "close": 149800.0, "pct": 10.88}, {"date": "20260427", "close": 149200.0, "pct": 10.44}, {"date": "20260428", "close": 148200.0, "pct": 9.7}, {"date": "20260429", "close": 142400.0, "pct": 5.4}, {"date": "20260430", "close": 141600.0, "pct": 4.81}, {"date": "20260504", "close": 144200.0, "pct": 6.74}, {"date": "20260506", "close": 147400.0, "pct": 9.1}, {"date": "20260507", "close": 145700.0, "pct": 7.85}, {"date": "20260508", "close": 149500.0, "pct": 10.66}, {"date": "20260511", "close": 148400.0, "pct": 9.84}, {"date": "20260512", "close": 143900.0, "pct": 6.51}, {"date": "20260513", "close": 187000.0, "pct": 38.42}, {"date": "20260514", "close": 179000.0, "pct": 32.49}, {"date": "20260515", "close": 156100.0, "pct": 15.54}, {"date": "20260518", "close": 150900.0, "pct": 11.7}, {"date": "20260519", "close": 145000.0, "pct": 7.33}, {"date": "20260520", "close": 146900.0, "pct": 8.73}, {"date": "20260521", "close": 161200.0, "pct": 19.32}, {"date": "20260522", "close": 177100.0, "pct": 31.09}, {"date": "20260526", "close": 94500.0, "pct": -30.05}, {"date": "20260527", "close": 99800.0, "pct": -26.13}, {"date": "20260528", "close": 93700.0, "pct": -30.64}, {"date": "20260529", "close": 90000.0, "pct": -33.38}, {"date": "20260601", "close": 95600.0, "pct": -29.24}, {"date": "20260602", "close": 90900.0, "pct": -32.72}, {"date": "20260604", "close": 98800.0, "pct": -26.87}, {"date": "20260605", "close": 108600.0, "pct": -19.62}]}, {"code": "187870", "name": "\ub514\ubc14\uc774\uc2a4", "entry_date": "20260414", "entry_price": 30400.0, "series": [{"date": "20260414", "close": 29000.0, "pct": -4.61}, {"date": "20260415", "close": 30300.0, "pct": -0.33}, {"date": "20260416", "close": 31850.0, "pct": 4.77}, {"date": "20260417", "close": 37200.0, "pct": 22.37}, {"date": "20260420", "close": 34950.0, "pct": 14.97}, {"date": "20260421", "close": 34050.0, "pct": 12.01}, {"date": "20260422", "close": 33900.0, "pct": 11.51}, {"date": "20260423", "close": 32400.0, "pct": 6.58}, {"date": "20260424", "close": 37300.0, "pct": 22.7}, {"date": "20260427", "close": 38300.0, "pct": 25.99}, {"date": "20260428", "close": 20600.0, "pct": -32.24}, {"date": "20260429", "close": 19870.0, "pct": -34.64}, {"date": "20260430", "close": 20200.0, "pct": -33.55}, {"date": "20260504", "close": 19320.0, "pct": -36.45}, {"date": "20260506", "close": 18080.0, "pct": -40.53}, {"date": "20260507", "close": 20200.0, "pct": -33.55}, {"date": "20260508", "close": 21550.0, "pct": -29.11}, {"date": "20260511", "close": 21700.0, "pct": -28.62}, {"date": "20260512", "close": 21500.0, "pct": -29.28}, {"date": "20260513", "close": 27950.0, "pct": -8.06}, {"date": "20260514", "close": 26850.0, "pct": -11.68}, {"date": "20260515", "close": 28100.0, "pct": -7.57}, {"date": "20260518", "close": 26700.0, "pct": -12.17}, {"date": "20260519", "close": 25950.0, "pct": -14.64}, {"date": "20260520", "close": 23600.0, "pct": -22.37}, {"date": "20260521", "close": 23000.0, "pct": -24.34}, {"date": "20260522", "close": 23800.0, "pct": -21.71}, {"date": "20260526", "close": 22800.0, "pct": -25.0}, {"date": "20260527", "close": 25700.0, "pct": -15.46}, {"date": "20260528", "close": 24950.0, "pct": -17.93}, {"date": "20260529", "close": 25950.0, "pct": -14.64}, {"date": "20260601", "close": 23100.0, "pct": -24.01}, {"date": "20260602", "close": 22050.0, "pct": -27.47}, {"date": "20260604", "close": 23950.0, "pct": -21.22}, {"date": "20260605", "close": 21150.0, "pct": -30.43}]}];
+    const holdingsCtx = document.getElementById('holdingsChart').getContext('2d');
+    const colors = ['#4ade80','#f87171','#fbbf24','#4a9eff','#a78bfa',
+                    '#f472b6','#34d399','#fb923c','#60a5fa','#c084fc'];
+    new Chart(holdingsCtx, {
+      type: 'line',
+      data: {
+        datasets: holdings.slice(0,10).map((h, i) => ({
+          label: h.code + ' ' + h.name,
+          data: h.series.map(s => ({x: s.date, y: s.pct})),
+          borderColor: colors[i % colors.length],
+          backgroundColor: 'transparent',
+          tension: 0.1, pointRadius: 1, borderWidth: 1.5,
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#e8eaed', font: {size:10} } } },
+        scales: {
+          x: { type: 'category', ticks: { color: '#8b939e', maxTicksLimit: 30 },
+                grid: { color: '#2a2f3a' } },
+          y: { ticks: { color: '#8b939e', callback: v => v.toFixed(0)+'%' },
+                grid: { color: '#2a2f3a' } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

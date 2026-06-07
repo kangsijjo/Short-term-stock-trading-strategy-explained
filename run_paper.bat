@@ -37,11 +37,20 @@ echo ============================================================ >> "!LOGFILE!"
 
 REM venv 우선 사용
 if exist ".venv\Scripts\python.exe" (
+    echo === us_market === >> "!LOGFILE!"
+    ".venv\Scripts\python.exe" us_market_collector.py >> "!LOGFILE!" 2>&1
+    echo. >> "!LOGFILE!"
     echo === live_signal === >> "!LOGFILE!"
     ".venv\Scripts\python.exe" live_signal.py >> "!LOGFILE!" 2>&1
     echo. >> "!LOGFILE!"
     echo === paper_tracker === >> "!LOGFILE!"
     ".venv\Scripts\python.exe" paper_tracker.py >> "!LOGFILE!" 2>&1
+    echo. >> "!LOGFILE!"
+    echo === exit_rule_engine === >> "!LOGFILE!"
+    ".venv\Scripts\python.exe" exit_rule_engine.py >> "!LOGFILE!" 2>&1
+    echo. >> "!LOGFILE!"
+    echo === dashboard === >> "!LOGFILE!"
+    ".venv\Scripts\python.exe" dashboard_generator.py >> "!LOGFILE!" 2>&1
     set "EXITCODE=!ERRORLEVEL!"
     goto :report
 )

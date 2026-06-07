@@ -11,6 +11,12 @@ import config
 from strategies.daily_loader import load_macro_daily, default_costs
 from strategies.high_with_filters import HighWithFiltersStrategy
 
+try:
+    from build_name_cache import load_name_cache
+except ImportError:
+    def load_name_cache():
+        return {}
+
 SIGNALS_CSV = "./paper_signals.csv"
 
 
@@ -33,8 +39,17 @@ def main():
     trades = strat.backtest(df, default_costs())
     print(f"[signals] 누적 신호: {len(trades)} 건")
 
-    # 종목명 lookup
-    code_name = df.groupby("code")["name"].first().to_dict() if "name" in df.columns else {}
+    # 종목명 lookup: macro_data 의 name 우선, 비면 name_cache fallback
+    code_name = {}
+    if "name" in df.columns:
+        code_name = {k: v for k, v in
+                     df.groupby("code")["name"].first().to_dict().items()
+                     if v and str(v).strip()}
+    name_cache = load_name_cache()
+    print(f"[name] macro_data 채움: {len(code_name)}, cache: {len(name_cache)}")
+
+    def _resolve_name(code):
+        return code_name.get(code) or name_cache.get(str(code).zfill(6), "")
 
     fields = ["signal_date", "code", "name", "entry_price_close",
               "target_exit_date", "lookback_high", "market_strong"]
@@ -42,17 +57,20 @@ def main():
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
         for t in trades:
-            # signal_date 는 entry_date 의 직전 영업일이지만, 단순화로 entry_date 사용
             writer.writerow({
-                "signal_date": t.entry_date,  # 약간 단순화
+                "signal_date": t.entry_date,
                 "code": t.code,
-                "name": code_name.get(t.code, ""),
+                "name": _resolve_name(t.code),
                 "entry_price_close": t.entry_price,
                 "target_exit_date": t.exit_date,
                 "lookback_high": 0,
                 "market_strong": True,
             })
-    print(f"[saved] {len(trades)} 건 → {SIGNALS_CSV}")
+
+    # 통계: 채워진 name 개수
+    filled = sum(1 for t in trades if _resolve_name(t.code))
+    print(f"[saved] {len(trades)} 건 -> {SIGNALS_CSV}")
+    print(f"[name]  name 채워진 신호: {filled} / {len(trades)}")
 
 
 if __name__ == "__main__":

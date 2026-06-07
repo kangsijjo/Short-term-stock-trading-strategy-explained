@@ -31,8 +31,15 @@ import config  # .env
 from strategies.daily_loader import load_macro_daily
 from strategies.high_with_filters import HighWithFiltersStrategy
 
+try:
+    from build_name_cache import load_name_cache
+except ImportError:
+    def load_name_cache():
+        return {}
 
-SIGNALS_CSV = "./paper_signals.csv"
+
+SIGNALS_CSV = "./paper_signals.csv"          # 메인 (high_500d_h40_MKT)
+SIGNALS_CSV_SIMPLE = "./paper_signals_simple.csv"  # 대안 (high_500d_h40 단순)
 
 # ETF/우선주 제외 prefix
 ETF_PREFIXES = ("KODEX", "TIGER", "KBSTAR", "KOSEF", "ARIRANG", "HANARO",
@@ -96,6 +103,15 @@ def detect_signals_today(df, n_lookback_days=500, n_market_ma=60,
     last_date = df["date"].max()
     today_df = df[df["date"] == last_date].copy()
 
+    # 종목명 보강: macro_data 의 name 비어있으면 name_cache fallback
+    name_cache = load_name_cache()
+    def _resolve_name(r):
+        nm = str(r.get("name", "") or "").strip()
+        if not nm:
+            nm = name_cache.get(str(r["code"]).zfill(6), "")
+        return nm
+    today_df["_name"] = today_df.apply(_resolve_name, axis=1)
+
     # 신호 조건
     signaled = today_df[
         (today_df["close"] > today_df["prev_high"]) &
@@ -103,9 +119,9 @@ def detect_signals_today(df, n_lookback_days=500, n_market_ma=60,
         (today_df["trading_value"] >= min_trading_value)
     ].copy()
 
-    # ETF/우선주 제외
+    # ETF/우선주 제외 (보강된 _name 사용)
     signaled = signaled[~signaled.apply(
-        lambda r: is_excluded(r.get("name", ""), r["code"]), axis=1)]
+        lambda r: is_excluded(r["_name"], r["code"]), axis=1)]
 
     # 40 영업일 후 청산 목표 — 단순화로 60 달력일 더함 (실제 청산일 = 거래일 계산 후)
     rows = []
@@ -113,7 +129,7 @@ def detect_signals_today(df, n_lookback_days=500, n_market_ma=60,
         rows.append({
             "signal_date": last_date,
             "code": str(r["code"]).zfill(6),
-            "name": r.get("name", ""),
+            "name": r["_name"],
             "entry_price_close": float(r["close"]),  # 다음날 시가가 실제 진입가
             "target_exit_date": "+40 영업일",
             "lookback_high": float(r.get("prev_high", 0) or 0),
@@ -151,18 +167,20 @@ def main():
     print(f"  Code     | Name                       | Close     | 500d High")
     print(f"{'-'*80}")
     for s in signals[:30]:
-        print(f"  {s['code']} | {s['name'][:25]:25s} | {s['entry_price_close']:>9,.0f} | "
-              f"{s['lookback_high']:>9,.0f}")
-    if len(signals) > 30:
-        print(f"  ... 외 {len(signals) - 30} 건")
-    print(f"{'='*80}")
+        print(f"  {s['code']} | {s['name'][:25]:25} | {s['entry_price_close']:>9,.0f} | {s['lookback_high']:>9,.0f}")
 
-    # CSV append (새 신호만)
+    if len(signals) > 30:
+        print(f"  ... 외 {len(signals)-30}개")
+
+    # 멱등 append (signal_date + code 중복 제거)
+    existing = load_existing_signals()
+    new = [s for s in signals
+           if (str(s["signal_date"]), str(s["code"]).zfill(6)) not in existing]
     if new:
         append_signals(new)
-        print(f"\n[saved] {len(new)} 건 → {SIGNALS_CSV}")
-
-    print(f"\n[next] 다음날 시가 매수 검토 + 40 영업일 후 종가 매도 (max 10 종목 동시보유)")
+        print(f"\n  → {len(new)}개 신규 신호 → {SIGNALS_CSV}")
+    else:
+        print(f"\n  → 모두 기존 신호와 중복 (멱등)")
 
 
 if __name__ == "__main__":
