@@ -13,11 +13,16 @@ from ._swing_base import _make_trades_for_signals
 
 
 def _rsi(series, period=14):
+    """Welles Wilder RSI (정통 — HTS/MTS 와 일치).
+
+    SMA 가 아닌 Wilder smoothing (EMA 변형, alpha=1/period).
+    """
     delta = series.diff()
     gain = delta.where(delta > 0, 0.0)
     loss = -delta.where(delta < 0, 0.0)
-    avg_gain = gain.rolling(period, min_periods=period).mean()
-    avg_loss = loss.rolling(period, min_periods=period).mean()
+    # Wilder smoothing = ewm with alpha=1/period, adjust=False
+    avg_gain = gain.ewm(alpha=1/period, adjust=False, min_periods=period).mean()
+    avg_loss = loss.ewm(alpha=1/period, adjust=False, min_periods=period).mean()
     rs = avg_gain / avg_loss.replace(0, np.nan)
     return 100 - (100 / (1 + rs))
 

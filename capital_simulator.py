@@ -23,17 +23,35 @@ import pandas as pd
 from dataclasses import asdict
 
 
-def simulate_capital(trades, initial_capital=10_000_000, max_concurrent=10):
+def simulate_capital(trades, initial_capital=10_000_000, max_concurrent=10,
+                     min_gross_pct=-30.0, max_gross_pct=None):
     """
     Args:
-        trades: list[StrategyTrade] — entry_date YYYYMMDD 문자열, gross_pct, net_pct 등
+        trades: list[StrategyTrade]
         initial_capital: 시작 자본 (원)
         max_concurrent: 매일 최대 보유 종목
+        min_gross_pct: 이 값 미만 gross_pct 매매 제외 (액면분할 폭락 방어).
+            기본 -30% — KOSDAQ 상하한가 자연 한계. 그 이하는 99% 권리락/액면분할.
+        max_gross_pct: 이 값 초과 gross_pct 매매 제외 (None 이면 보존).
+            ±30% 양방향 컷오프는 진짜 익절도 잘라내므로, 음수만 차단이 정석.
+            병합으로 +30% 이상 점프 의심되면 +100% 같은 보수적 상한 가능.
 
     Returns: dict with metrics, 또는 None (매매 없음)
     """
     if not trades:
         return None
+
+    # 액면분할/병합 방어 — 단방향 컷오프 (음수만 기본, 양수는 진짜 익절 보존)
+    n_before = len(trades)
+    if min_gross_pct is not None:
+        trades = [t for t in trades if t.gross_pct >= min_gross_pct]
+    if max_gross_pct is not None:
+        trades = [t for t in trades if t.gross_pct <= max_gross_pct]
+    n_dropped = n_before - len(trades)
+    if n_dropped > 0:
+        bounds = f"[{min_gross_pct}, {max_gross_pct}]"
+        print(f"  [cutoff] gross_pct 범위 {bounds}% 밖 매매 {n_dropped}건 제외 "
+              f"(액면분할/병합 의심)")
 
     # 매매 DataFrame
     df = pd.DataFrame([{
