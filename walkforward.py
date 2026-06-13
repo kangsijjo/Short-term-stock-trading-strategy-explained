@@ -10,7 +10,7 @@ Walk-forward 검증 v2 — Multi-Split + portfolio_v2.
 import pandas as pd
 import config
 
-from strategies.daily_loader import load_macro_daily, default_costs
+from strategies.daily_loader import load_macro_daily, default_costs, filter_universe
 from strategies.high_52w import FiftyTwoWeekHighStrategy
 from strategies.high_with_filters import HighWithFiltersStrategy
 from strategies.portfolio import PortfolioStrategy
@@ -96,6 +96,7 @@ def cap_or_empty(trades, max_concurrent=10):
 
 def main():
     df = load_macro_daily()
+    df = filter_universe(df)   # live_signal 과 동일 유니버스 (ETF/우선주/스팩 제외)
     all_dates = sorted(df["date"].unique())
     n = len(all_dates)
     costs = default_costs()

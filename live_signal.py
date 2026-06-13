@@ -9,8 +9,8 @@
   2. 가장 최근 영업일 기준 h500_40_MKT 신호 검사:
      - 종가 > 500일 신고가 (lookback=500)
      - 시장 강세 게이트 (전체 평균 change_pct 의 60일 MA > 0)
-     - 거래대금 >= 10억
-     - ETF/우선주 제외
+     - 거래대금 >= 30억 (백테스트와 동일 기준)
+     - ETF/우선주/스팩 제외
   3. 신호 발생 종목 → 콘솔 출력 + paper_signals.csv 적재 (멱등)
 
 저장:
@@ -51,7 +51,7 @@ def is_excluded(name, code):
         return True
     if name.startswith(ETF_PREFIXES):
         return True
-    if name.endswith(("우", "우B")) or "우선주" in name:
+    if name.endswith(("우", "우B")) or "우선주" in name or "스팩" in name:
         return True
     if len(code) == 6 and code.startswith("5"):
         return True
@@ -81,7 +81,10 @@ def append_signals(new_rows):
 
 
 def detect_signals_today(df, n_lookback_days=500, n_market_ma=60,
-                          min_trading_value=1_000_000_000):
+                          min_trading_value=3_000_000_000):
+    # [fix] 1_000_000_000(10억) → 3_000_000_000(30억).
+    # 백테스트/walk-forward 에서 검증한 전략(high_500d_h40_MKT)은 30억 필터 기준.
+    # 10억이면 검증 안 된 더 넓은 유니버스로 운용하게 됨.
     """가장 최근 영업일에 대해 h500_40_MKT 신호 검사.
 
     Returns: list of dict (signal rows)

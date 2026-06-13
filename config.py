@@ -59,6 +59,21 @@ if not KIS_APP_KEY or not KIS_APP_SECRET:
 
 
 # ============================================================
+# 키움증권 REST API (모의투자 자동매매용)
+# ============================================================
+# KIWOOM_ENV: "mock" (모의투자, 기본) 또는 "prod" (실전 — kiwoom_trader 는
+#             안전장치로 prod 에서 주문을 거부함. 실전 전환은 별도 작업.)
+KIWOOM_ENV = os.getenv("KIWOOM_ENV", "mock").lower().strip()
+if KIWOOM_ENV == "prod":
+    KIWOOM_APP_KEY = os.getenv("KIWOOM_PROD_APP_KEY", "").strip()
+    KIWOOM_APP_SECRET = os.getenv("KIWOOM_PROD_APP_SECRET", "").strip()
+else:
+    KIWOOM_APP_KEY = os.getenv("KIWOOM_MOCK_APP_KEY", "").strip()
+    KIWOOM_APP_SECRET = os.getenv("KIWOOM_MOCK_APP_SECRET", "").strip()
+KIWOOM_ACCOUNT = os.getenv("KIWOOM_ACCOUNT", "").strip()  # 참고용 (REST 는 앱키에 계좌 귀속)
+
+
+# ============================================================
 # 룰 v2 파라미터 (스나이퍼 모드 적용)
 # ============================================================
 RULE_V2 = {

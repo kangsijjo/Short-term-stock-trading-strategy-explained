@@ -15,16 +15,22 @@
 | 청산 | 진입 후 40 영업일 종가 |
 | 자본 운용 | 최대 10종목 동시보유, 자본 1/N 분배 |
 
-### 실측 성과 (3년 macro_data, 단방향 -30% 컷오프 적용)
+### 실측 성과 (2026-06-11 교정: 기업행위 정밀 제외 + mark-to-market 평가)
 
-| 지표 | 값 |
-|---|---|
-| CAGR | **+156.27% / 년** |
-| Real MDD | **-8.03%** |
-| Real Sharpe | **+3.01** |
-| Win rate | 49.28% |
-| 표본 | 1,411 매매 |
-| 1천만원 → 3년 후 | 약 2,752만원 |
+| 지표 | 값 | (구버전 — 과대평가) |
+|---|---|---|
+| CAGR | **+139.9% / 년** | ~~+156.27%~~ |
+| Real MDD | **-42.6%** ⚠️ | ~~-8.03%~~ |
+| Real Sharpe | **+1.34** | ~~+3.01~~ |
+| Win rate | 49.9% | 49.28% |
+| 표본 | 1,575 매매 (CA 제외 21건) | 1,411 |
+| 1천만원 → 13개월 후 | 약 2,564만원 | 2,752만원 |
+
+**교정 사유** (상세는 USAGE.md "2026-06-11 검토" 참조):
+
+1. 구버전의 `-30% 일괄 컷오프`는 액면분할 방어 목적이었으나 **실제 -60~-75% 폭락 186건(11.7%)까지 삭제**해 성과를 부풀렸음. 지금은 KRX 등락률 대조로 기업행위가 낀 매매(21건)만 정확히 제외.
+2. 구버전 MDD는 보유 포지션을 **진입원가로 평가**해 보유 중 평가손실이 안 잡혔음 (-8%는 허상). mark-to-market 적용 시 실제 MDD 는 **-42.6%** — 손절 없는 40일 보유 전략의 진짜 리스크.
+3. 매매 표본 기간은 **13개월(2025-05~2026-06, 강세장 구간)** — "3년 데이터"는 lookback 500일 워밍업 포함 기준. 약세장 미검증.
 
 ### Walk-forward Multi-split 견고성
 
@@ -122,9 +128,11 @@ powershell -ExecutionPolicy Bypass -File .\install_scheduler.ps1
 | 2. 자본 시뮬 | high_500d_h40 (+129%) | ❌ train 운 |
 | 3. Single walk-forward (67/33) | portfolio 우위 | ❌ 단일 분할 운 |
 | 4. **Multi-split walk-forward** | high_500d_h40_MKT 단일 (+77.67%) | ⭐ 거의 정답 |
-| 5. **전문가 지적 + 단방향 -30% 컷오프** | **+156.27% (액면분할 오염 제거)** | ⭐ **진짜 정답** |
+| 5. 단방향 -30% 컷오프 | +156.27% | ❌ 실손실 11.7%까지 삭제 — 과대평가 |
+| 6. **기업행위 정밀 제외 + MTM 평가 (2026-06-11)** | **CAGR +139.9% / MDD -42.6%** | ⭐ **현재 기준** |
 
 **교훈**: 어떤 단순한 결론도 거부하고 다층 검증해야 진실 도달.
+**주의**: walk-forward 의 "OOS 통과 전략 선별" 자체가 OOS 를 재사용한 선택이므로, 표의 OOS CAGR 도 낙관 편향이 있음. 진짜 OOS 는 paper trading 실측.
 
 ---
 
@@ -153,7 +161,8 @@ powershell -ExecutionPolicy Bypass -File .\install_scheduler.ps1
 │   └── portfolio.py            # 다중 전략 결합
 ├── strategy_engine.py      # 14개 동시 비교 + 자본 시뮬
 ├── walkforward.py          # multi-split 견고성 검증
-├── capital_simulator.py    # 자본 모델링 (단방향 -30% 컷오프)
+├── capital_simulator.py    # 자본 모델링 (MTM 평가 지원)
+├── update_macro_daily.py   # macro_data 일일 증분 갱신 (run_paper 에서 자동 호출)
 ├── live_signal.py          # ⭐ 매일 실전 신호 감지
 ├── paper_tracker.py        # ⭐ 누적 손익 + 보유 포지션
 ├── pykrx_collector.py      # 일봉 3년치 수집
@@ -168,7 +177,9 @@ powershell -ExecutionPolicy Bypass -File .\install_scheduler.ps1
 
 ## 알려진 한계 (정직)
 
-1. **수정주가 미반영** — pykrx 의 raw OHLCV. 액면분할 시 가짜 -80% 폭락. 단방향 -30% 컷오프로 임시 처리. `FinanceDataReader` 재수집이 진짜 정답 (별건 작업).
+1. **수정주가 미반영** — pykrx 의 raw OHLCV. 기업행위(액면분할 등)가 낀 매매는 KRX 등락률 대조 방식으로 자동 제외 (`strategies/_swing_base.find_corporate_action_dates`). `FinanceDataReader` 수정주가 재수집이 더 정밀한 정답 (별건 작업).
+1-2. **슬롯 포화** — 신호의 약 95%가 10슬롯 부족으로 스킵됨. 어떤 신호가 체결되는지는 신호 도착 순서에 의존 → 결과가 선택 운에 민감. 동일 종목 중복 진입 허용이라 집중 리스크 존재.
+1-3. **표본 기간 13개월 (강세장)** — 약세장/횡보장 성과 미검증. MDD -42.6%는 강세장에서의 수치임에 유의.
 2. **종목명 NaN** — pykrx_collector 가 종목명 미저장. 코드 식별만 가능. 가독성만 떨어짐.
 3. **KOSDAQ 한정** — KOSPI 종목은 별도 인프라 필요.
 4. **호가/체결강도 없음** — KIS 무료 API 한계. 단타 정밀도에 영향.

@@ -81,7 +81,7 @@ def decide_exit(open_position, us_market=None, sector_map=None,
             "exit_today": True,
             "exit_timing": "market_open",
             "exit_price_source": "open",
-            "reason": f"{proxy} {us_change:+.2f}% 강세 매도 (09:00 시가)",
+            "reason": f"{proxy} {us_change:+.2f}% 급락 — 09:00 시가 매도",
         }
     elif us_change <= 0:
         return {

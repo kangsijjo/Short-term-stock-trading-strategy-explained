@@ -135,14 +135,24 @@ def save_dart_for_corp(corp_code, date_from, date_to=None):
     return items
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
+def backfill_missing(lookback_bdays=10):
+    """[2026-06-13] 결측 우선: 최근 N영업일 중 빠진 공시 파일부터 수집."""
+    from gap_scan import recent_missing
+    missing = recent_missing(config.DB_DART_DIR, lookback_bdays=lookback_bdays,
+                             include_today=False)
+    if missing:
+        print(f"[dart] 결측 {len(missing)}일 우선 수집: {missing}")
+        for d in missing:
+            save_dart_for_date(d)
 
-    cmd = sys.argv[1]
+
+def main():
+    # [fix] 인자 없으면 기본 동작 (이전엔 사용법만 출력하고 종료 → 가드의
+    #       재수집 호출이 실제로는 아무것도 안 하던 잠복 버그)
+    cmd = sys.argv[1] if len(sys.argv) >= 2 else "today"
 
     if cmd == "today":
+        backfill_missing()
         save_dart_for_date()
     elif cmd == "date":
         if len(sys.argv) < 3:

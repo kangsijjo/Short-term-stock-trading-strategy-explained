@@ -118,13 +118,25 @@ def save_short_balance(date_str=None):
     print(f"[short] {len(df)}행 저장 (source={used_source}): {out_path}")
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(1)
+def backfill_missing(lookback_bdays=10):
+    """[2026-06-13] 결측 우선: 최근 N영업일 중 빠진 공매도 파일부터 수집."""
+    from gap_scan import recent_missing
+    missing = recent_missing(config.DB_SHORT_DIR, lookback_bdays=lookback_bdays,
+                             include_today=False)  # 공매도는 T-1 데이터
+    if missing:
+        print(f"[short] 결측 {len(missing)}일 우선 수집: {missing}")
+        for d in missing:
+            save_short_balance(d)
+    return missing
 
-    cmd = sys.argv[1]
+
+def main():
+    # 인자 없으면 기본 동작: 결측 백필 + 전일분 (스케줄러/가드 호환)
+    cmd = sys.argv[1] if len(sys.argv) >= 2 else "both"
     date_str = sys.argv[2] if len(sys.argv) >= 3 else None
+
+    if cmd in ("both", "short") and date_str is None:
+        backfill_missing()
 
     if cmd == "credit":
         save_credit_balance(date_str)

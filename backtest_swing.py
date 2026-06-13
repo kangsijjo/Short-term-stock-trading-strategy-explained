@@ -2,7 +2,7 @@
 오버나잇 스윙 전용 백테스트 메인 실행 스크립트.
 
 [전략 룰]
-- 진입: 15시 20분 부근, 주가가 5일 이동평균선(MA5) 위에 있고 당일 외인 순매수가 양수일 때 시장가 매수
+- 진입: 15시 20분 부근, 주가가 5일 이동평균선(MA5) 위에 있고 전일(D-1) 외인 순매수가 양수일 때 시장가 매수
 - 청산: 익일 09시 05분 부근, 조건 없이 전량 시장가 매도 (시가 갭 상승/하락분 수익 확정)
 
 실행: python backtest_swing.py
@@ -64,11 +64,11 @@ class SwingSimulator:
                 
                 self.entered = False
 
-            # [진입 로직] 당일 15시 20분 부근 매수 (5일선 위 + 당일 외인 수급)
+            # [진입 로직] 당일 15시 20분 부근 매수 (5일선 위 + 전일 외인 수급)
             if not self.entered and "152000" <= time <= "152500":
                 foreign_net = foreign_data_map.get(date, {}).get(self.code, 0)
-                
-                # 조건: 외인 순매수 양수 + 단기 추세(MA5) 안착
+
+                # 조건: 전일 외인 순매수 양수 + 단기 추세(MA5) 안착
                 if foreign_net > 0 and pd.notna(row.ma5) and price > row.ma5:
                     self.entered = True
                     self.entry_price = price
@@ -91,14 +91,19 @@ def main():
 
     print(f"총 {len(dates)}일의 데이터를 종목별 시계열로 이어붙이는 중...")
 
-    # 2. 당일(D-0) 외국인 수급 데이터 맵핑
+    # 2. 외국인 수급 데이터 맵핑 — D-1(전일) 데이터를 D-0 키에 매핑
+    # [fix] 이전엔 당일(D-0) 종가 후 확정되는 수급을 15:20 진입 조건에 사용 → look-ahead bias.
+    #       15:20 시점에 알 수 있는 것은 전일 확정치이므로 하루 밀어서 사용.
     foreign_data_map = {}
-    for d in dates:
+    prev_inv = {}
+    for d in dates:  # dates 는 오름차순
+        foreign_data_map[d] = prev_inv
         inv_data = data_loader.load_investor_for_date(d)
         if inv_data:
-            foreign_data_map[d] = {code: float(row.get('foreign_net_value', 0) or 0) for code, row in inv_data.items()}
+            prev_inv = {code: float(row.get('foreign_net_value', 0) or 0)
+                        for code, row in inv_data.items()}
         else:
-            foreign_data_map[d] = {}
+            prev_inv = {}
 
     # 3. 모든 날짜의 분봉 데이터를 로드하여 연속된 DataFrame으로 묶기
     all_data_by_code = {}

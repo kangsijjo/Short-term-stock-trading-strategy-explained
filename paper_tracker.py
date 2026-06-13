@@ -19,18 +19,38 @@ Paper Trading 추적기 — paper_signals.csv 의 모든 신호로 가상 매매
 import os
 import sys
 import pandas as pd
-
 import config
 from strategies.daily_loader import load_macro_daily
-from capital_simulator import simulate_capital
+from strategies._swing_base import find_corporate_action_dates, _trade_has_corporate_action
+from capital_simulator import simulate_capital, build_price_lookup
 from strategies.base import StrategyTrade
 
 SIGNALS_CSV = "./paper_signals.csv"
 HOLDING_DAYS = 40
 MAX_CONCURRENT = 10
 INITIAL_CAPITAL = 10_000_000
-COST_PCT = 0.330  # KOSDAQ 수수료 + 세금 + 슬리피지
+# 비용 0.33% = 수수료 0.015×2 + 거래세 0.20 + 매도 슬리피지 0.10.
+# 매수 슬리피지는 X2 모드의 ENTRY_SLIPPAGE_PCT(+2%)로 별도 반영되므로 여기서 제외.
+# (백테스트 default_costs 0.43% 는 매수 슬리피지 0.10 포함 기준 — 불일치 아님)
+COST_PCT = 0.330
 
+# X2 모드 — 시간외 매수 가정 (T close × (1+ENTRY_SLIPPAGE_PCT/100))
+# walk-forward 검증: CAGR +47%p, Sharpe +0.17 (원본 대비)
+ENTRY_AT_CLOSE = True
+ENTRY_SLIPPAGE_PCT = 2.0
+
+# AI 통합 — 매매 결정 영향 X (사용자 합의). dashboard 표시만.
+# (이전 외부 조언의 AI 거부권 로직은 비활성화. AI 는 dashboard 에서 정보 표시용)
+USE_AI = False
+AI_MODEL = None
+
+def get_today_market_features():
+    feat_path = "./ai_data/historical_features.csv"
+    if not os.path.exists(feat_path):
+        return None
+    df = pd.read_csv(feat_path)
+    return df.iloc[[-1]][['kosdaq_return', 'kosdaq_disparity', 'kosdaq_volatility', 
+                          'kosdaq_foreign_net', 'kosdaq_inst_net']]
 
 def main():
     if not os.path.exists(SIGNALS_CSV):
@@ -61,27 +81,46 @@ def main():
         lambda x: sorted(x["date"].tolist())).to_dict()
     price_map = df.set_index(["code", "date"])[["open", "close"]].to_dict("index")
 
+    # 기업행위(액면분할/병합) 발생일 — 해당 매매는 가격 왜곡이라 통계에서 제외
+    ca_map = find_corporate_action_dates(df)
+
     # 3) 신호 → 가상 매매 (entry/exit 결정)
+    # X2 모드: T 종가 × 1.02 매수 (시간외 가정), T+39 종가 매도 (40 영업일 보유)
+    # 원본 모드: T+1 시가 매수, 진입일 포함 40영업일째 종가 매도
     trades = []
+    n_ca_skipped = 0
     for _, sig in signals.iterrows():
         code = sig["code"]
         sig_date = sig["signal_date"]
+
         if code not in code_dates:
             continue
         dates_list = code_dates[code]
-        # signal_date 다음 영업일 찾기
-        next_dates = [d for d in dates_list if d > sig_date]
-        if not next_dates:
-            # 아직 진입 불가 (다음 영업일 데이터 없음)
-            continue
-        entry_date = next_dates[0]
-        entry_p = price_map.get((code, entry_date), {}).get("open")
-        if not entry_p or entry_p <= 0:
-            continue
 
-        # 40 영업일 후 exit_date
-        idx = dates_list.index(entry_date)
-        exit_idx = idx + HOLDING_DAYS
+        if ENTRY_AT_CLOSE:
+            # X2: T 시간외 매수 가정
+            if sig_date not in dates_list:
+                continue
+            entry_date = sig_date
+            sig_close = price_map.get((code, sig_date), {}).get("close")
+            if not sig_close or sig_close <= 0:
+                continue
+            entry_p = sig_close * (1 + ENTRY_SLIPPAGE_PCT / 100)
+            idx = dates_list.index(sig_date)
+            exit_idx = idx + HOLDING_DAYS - 1  # T+39 종가
+        else:
+            # 원본: T+1 시가 매수
+            next_dates = [d for d in dates_list if d > sig_date]
+            if not next_dates:
+                continue
+            entry_date = next_dates[0]
+            entry_p = price_map.get((code, entry_date), {}).get("open")
+            if not entry_p or entry_p <= 0:
+                continue
+            idx = dates_list.index(entry_date)
+            # [fix] 이전 idx + HOLDING_DAYS 는 백테스트(진입일 포함 40일째 = entry+39)보다
+            #       하루 더 보유하는 off-by-one 이었음.
+            exit_idx = idx + HOLDING_DAYS - 1  # 진입일 포함 40영업일째 종가
         if exit_idx >= len(dates_list):
             # 아직 청산 시점 도달 못함 — 미실현 보유 중
             exit_date = None
@@ -95,6 +134,10 @@ def main():
                 exit_p = None
                 net_pct = None
             else:
+                # 보유 중 기업행위(액면분할 등) 발생 시 무수정주가 왜곡 → 제외
+                if _trade_has_corporate_action(ca_map, code, entry_date, exit_date):
+                    n_ca_skipped += 1
+                    continue
                 gross_pct = (exit_p / entry_p - 1) * 100
                 net_pct = gross_pct - COST_PCT
 
@@ -116,6 +159,8 @@ def main():
     open_pos = tdf[tdf["status"] == "open"].copy()
 
     print(f"\n[positions] 누적 매매: {len(tdf)}, 청산 {len(closed)}, 보유 {len(open_pos)}")
+    if n_ca_skipped:
+        print(f"  (기업행위 포함 매매 {n_ca_skipped}건 통계 제외)")
 
     # 5) 청산 매매 손익
     if not closed.empty:
@@ -147,9 +192,13 @@ def main():
             )
             for _, r in closed.iterrows()
         ]
+        # MTM 평가 — 보유 중 평가손익을 equity 에 반영 (MDD/Sharpe 정확)
+        price_lookup, trading_dates = build_price_lookup(df)
         cap = simulate_capital(sim_trades,
                                 initial_capital=INITIAL_CAPITAL,
-                                max_concurrent=MAX_CONCURRENT)
+                                max_concurrent=MAX_CONCURRENT,
+                                price_map=price_lookup,
+                                trading_dates=trading_dates)
         if cap:
             print(f"\n[capital] 자본 모델링 결과")
             print(f"  초기:        {cap['initial']:,} 원")
@@ -166,6 +215,8 @@ def main():
         cols = ["code", "name", "signal_date", "entry_date", "entry_price"]
         print(open_pos[cols].head(20).to_string(index=False))
 
+    # [fix] 이전의 `skipped_by_ai` 출력은 변수 미정의로 USE_AI=True 시 NameError 발생 → 제거.
+    # AI 는 dashboard 표시 전용 (매매 결정 영향 없음, 사용자 합의).
 
 if __name__ == "__main__":
     main()

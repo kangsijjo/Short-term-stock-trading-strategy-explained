@@ -18,3 +18,4 @@ websockets>=12.0
 
 # 수정주가 데이터 (선택, fdr_probe 시험용)
 finance-datareader>=0.9.0
+kiwoom-rest-api

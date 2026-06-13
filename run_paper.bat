@@ -1,10 +1,11 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 REM ============================================================
-REM  Paper Trading 자동 실행 — 매일 평일 16:30
-REM  1) live_signal.py — 오늘의 메인 전략 신호 감지
-REM  2) paper_tracker.py — 가상 포지션 + 누적 손익 리포트
+REM  Paper Trading daily 15:50
+REM  steps: update_macro -> us_market -> live_signal -> paper_tracker
+REM         -> exit_rule_engine -> ai_training(Friday only) -> dashboard
 REM ============================================================
+set PYTHONIOENCODING=utf-8
 
 cd /d "%~dp0"
 set "EXITCODE=0"
@@ -12,7 +13,6 @@ set "EXITCODE=0"
 for /f %%I in ('powershell -NoProfile -Command "(Get-Date).DayOfWeek.value__"') do set "DOW=%%I"
 for /f %%I in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')"') do set "TODAY=%%I"
 
-REM 주말 스킵
 if "!DOW!"=="0" goto :weekend
 if "!DOW!"=="6" goto :weekend
 goto :weekday
@@ -35,34 +35,54 @@ echo ============================================================ >> "!LOGFILE!"
 echo  Start: %DATE% %TIME% >> "!LOGFILE!"
 echo ============================================================ >> "!LOGFILE!"
 
-REM venv 우선 사용
 if exist ".venv\Scripts\python.exe" (
-    echo === us_market === >> "!LOGFILE!"
-    ".venv\Scripts\python.exe" us_market_collector.py >> "!LOGFILE!" 2>&1
-    echo. >> "!LOGFILE!"
-    echo === live_signal === >> "!LOGFILE!"
-    ".venv\Scripts\python.exe" live_signal.py >> "!LOGFILE!" 2>&1
-    echo. >> "!LOGFILE!"
-    echo === paper_tracker === >> "!LOGFILE!"
-    ".venv\Scripts\python.exe" paper_tracker.py >> "!LOGFILE!" 2>&1
-    echo. >> "!LOGFILE!"
-    echo === exit_rule_engine === >> "!LOGFILE!"
-    ".venv\Scripts\python.exe" exit_rule_engine.py >> "!LOGFILE!" 2>&1
-    echo. >> "!LOGFILE!"
-    echo === dashboard === >> "!LOGFILE!"
-    ".venv\Scripts\python.exe" dashboard_generator.py >> "!LOGFILE!" 2>&1
-    set "EXITCODE=!ERRORLEVEL!"
-    goto :report
+    set "PYEXE=.venv\Scripts\python.exe"
+    goto :runsteps
 )
 where py >nul 2>nul
 if !ERRORLEVEL! EQU 0 (
-    py -3.11 live_signal.py >> "!LOGFILE!" 2>&1
-    py -3.11 paper_tracker.py >> "!LOGFILE!" 2>&1
-    set "EXITCODE=!ERRORLEVEL!"
-    goto :report
+    set "PYEXE=py -3.11"
+    goto :runsteps
 )
 echo [ERROR] python not found >> "!LOGFILE!"
 set "EXITCODE=2"
+goto :report
+
+:runsteps
+echo === update_macro === >> "!LOGFILE!"
+!PYEXE! update_macro_daily.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+echo. >> "!LOGFILE!"
+echo === us_market === >> "!LOGFILE!"
+!PYEXE! us_market_collector.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+echo. >> "!LOGFILE!"
+echo === live_signal === >> "!LOGFILE!"
+!PYEXE! live_signal.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+echo. >> "!LOGFILE!"
+echo === paper_tracker === >> "!LOGFILE!"
+!PYEXE! paper_tracker.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+echo. >> "!LOGFILE!"
+echo === exit_rule_engine === >> "!LOGFILE!"
+!PYEXE! exit_rule_engine.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+echo. >> "!LOGFILE!"
+REM AI training: weekly (Friday DOW=5). Daily retrain adds noise, not signal.
+if "!DOW!"=="5" (
+    echo === ai_training weekly v3+v4 === >> "!LOGFILE!"
+    !PYEXE! make_trades_history_v3.py >> "!LOGFILE!" 2>&1
+    if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+    !PYEXE! ai_trainer_v4.py >> "!LOGFILE!" 2>&1
+    if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
+) else (
+    echo === ai_training skipped - weekly Friday only === >> "!LOGFILE!"
+)
+echo. >> "!LOGFILE!"
+echo === dashboard === >> "!LOGFILE!"
+!PYEXE! dashboard_generator.py >> "!LOGFILE!" 2>&1
+if !ERRORLEVEL! NEQ 0 set "EXITCODE=1"
 
 :report
 echo. >> "!LOGFILE!"

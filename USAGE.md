@@ -1,10 +1,110 @@
-# Stock_AI_Project 파일 사용 가이드
+﻿# Stock_AI_Project 사용 가이드
 
-**메인 전략: high_500d_h40_MKT** (500일 신고가 + 40일 보유 + 시장 강세 게이트).
-3년치 데이터 4단계 분석 (매매당 → 자본 → walk-forward → multi-split) 거쳐 확정.
-실측 CAGR +79.75%/년, MDD -10.13%, Sharpe +1.95.
+**구성: 1부 사용법(이것만 봐도 운영 가능) → 2부 돌아가는 원리·파일 상세 → 3부 업데이트 내역.**
+최종 업데이트: 2026-06-12.
 
-단타 박스권 룰 v2 는 비용 한계로 break-even 미달 → 별건으로만 유지 (자동 백테스트).
+**메인 전략: high_500d_h40_MKT** — 500일 신고가 돌파 + 40영업일 보유 + 시장 강세 게이트.
+공식 성과 (2026-06-11 교정·MTM 기준): **CAGR +139.9%/년, MDD -42.6%, Sharpe +1.34**, 승률 49.9%, 표본 1,575매매 (13개월 강세장 구간 — 약세장 미검증).
+
+---
+
+# 1부 — 사용법
+
+## 1.1 평소에 할 일: 없음 (전부 자동)
+
+| 시각 (평일) | 작업 | 내용 |
+|---|---|---|
+| 08:30 | KIS_KRX | T-1 공매도 |
+| 09:00~14:30 | KIS_Ranking | 30분마다 분봉/랭킹/지수 |
+| 15:40 | KIS_EOD | 장 마감 수집 |
+| **15:50** | **KIS_Paper** | macro 갱신 → 신호 감지 → 페이퍼 추적 → 대시보드 (금요일엔 +AI 주간학습) |
+| 16:00 | KIS_Backtest | 단타 v2 (별건) |
+| 19:00 | KIS_DART | 당일 공시 |
+| **20:00** | **KIS_Recheck** | 당일 수집 검증 → 누락분 재수집 → 신호/대시보드 후속 갱신 |
+| 매월 1일 02:00 | KIS_Monthly | xlsx 합본 |
+
+조건: PC 켜짐 + 로그인 상태. 꺼져 있던 시간의 작업은 부팅 후 자동 보충 실행됨.
+
+## 1.2 주 1회 확인 루틴 (1분)
+
+1. `dashboard.html` 열어 포지션/손익 확인
+2. `logs\recheck_*.log` 마지막 줄이 "모든 필수 항목 정상"인지 확인 — [FAIL] 있으면 그때만 개입
+
+## 1.3 수동 명령 (필요할 때만)
+
+| 목적 | 명령 |
+|---|---|
+| 오늘 신호 즉시 확인 | `python live_signal.py` |
+| 페이퍼 손익/포지션 | `python paper_tracker.py` |
+| 밀린 데이터 즉시 백필 | `run_recheck.bat` |
+| **8년치 과거 백필 (1회 권장, 밤에)** | `python pykrx_collector.py 8` |
+| AI 수동 재학습 | `python make_trades_history_v3.py` → `python ai_trainer_v4.py` |
+| 신용잔고 API 단독 검증 | `python credit_collector.py probe` |
+| CA(액면분할)필터 표본 검증 | `python adjusted_probe.py` |
+| 스케줄 재등록 | `.\install_scheduler.ps1` (자동으로 관리자 권한 요청) |
+
+## 1.4 문제가 생기면
+
+- `logs\recheck_YYYYMMDD.log` 에서 [FAIL] 항목 확인 → 위 표의 해당 수집기 수동 실행
+- 한글 깨짐/!변수! 그대로 출력 → .bat 파일이 ASCII+CRLF 인지 확인 (메모장 다른이름저장 시 주의)
+- KRX/pykrx 가 사이트 개편으로 깨지면 recheck 로그에 [FAIL] 로 나타남 → 그때 점검
+
+## 1.5 키움 모의투자 자동매매 (2026-06-12 신설, 같은 날 원본 모드로 전환)
+
+⚠️ **키움 모의서버는 시간외단일가 미지원**(지정가/시장가만) 확인 → 백테스트
+**원본 모드**(공식 성과 +139.9% 기준)로 운용:
+
+| 시각 | 작업 | 내용 |
+|---|---|---|
+| 09:01 | KIS_KiwoomBuy | 전일 신호 종목 시장가 매수 (≈ 시가 체결) |
+| 15:21 | KIS_KiwoomSell | 40영업일 만기 종목 시장가 매도 (마감 동시호가 ≈ 종가 체결) |
+
+주문 로그 `db/kiwoom/orders_*.csv`, 실행 로그 `logs/kiwoom_*.log`.
+paper_tracker 는 X2(시간외) 모드를 계속 추적 — **두 모드 병행 검증** 체계.
+키움 계좌 내역은 아직 dashboard.html 에 미표시 (확인은 `python kiwoom_trader.py status`).
+
+**최초 설정 (1회)**:
+
+1. `.env` 에 추가:
+```env
+# 키움증권 REST API (openapi.kiwoom.com 에서 발급)
+KIWOOM_ENV=mock
+KIWOOM_MOCK_APP_KEY=모의용_앱키
+KIWOOM_MOCK_APP_SECRET=모의용_시크릿
+KIWOOM_PROD_APP_KEY=실전용_앱키
+KIWOOM_PROD_APP_SECRET=실전용_시크릿
+```
+2. `pip install kiwoom-rest-api` (.venv 활성화 후 — PyPI 명칭 주의, "kiwoom-api" 아님)
+3. 연결 검증: `python kiwoom_trader.py status` → 예수금/잔고가 나오면 OK
+4. `.\install_scheduler.ps1` 재실행 (KIS_Kiwoom 16:05 등록)
+
+**수동 명령**: `python kiwoom_trader.py [status|buy|sell|daily]`
+
+**안전장치**: `KIWOOM_ENV=prod` 면 주문이 차단됨 (조회만 가능). 실전 전환은 모의
+검증 수개월 후 별도 결정. 주문유형은 시간외단일가(62) — 모의서버가 거부하면
+로그 확인 후 `kiwoom_trader.py` 상단 `ORDER_TYPE_BUY="00"`(지정가)로 바꿔 장중 테스트.
+
+## 1.6 증권사 API — 현재 사용 + 보강 옵션
+
+**현재 사용 (무료)**:
+
+| 소스 | 용도 |
+|---|---|
+| 한국투자증권 KIS Open API | 분봉·랭킹·지수·신용잔고(probe), 향후 주문 |
+| pykrx (KRX 정보데이터시스템) | 일봉·수급·공매도 — 시점 기준이라 상폐 포함 (백테스트의 생명줄) |
+| DART OpenAPI | 공시 + 재무제표 (dart_fundamentals) |
+| yfinance | 미국 지수·VIX·환율 (us_market / macro_collector) |
+
+**보강이 필요해지면 (계좌 개설 + 앱키 발급, 무료)**:
+
+- **키움증권 REST API** — 종목별 신용잔고·프로그램매매·투자자별 상세 등 수급 데이터 제공 범위가 넓음. KIS 신용잔고 probe 가 끝내 실패하면 1순위 대안.
+- **LS증권(구 이베스트) xingAPI/REST** — 신용잔고 추이, 테마/업종 수급 등 전통적으로 데이터 항목이 가장 다양. 단 구형 xingAPI 는 Windows COM 기반.
+- 대신증권 크레온(CYBOS)은 데이터는 풍부하나 32bit 전용이라 비권장.
+- 연동 방법: 해당 증권사 앱키를 .env 에 추가하고 `credit_collector.py` 의 probe 패턴(후보 엔드포인트 자동 검증)을 복제해 붙이면 됨.
+
+---
+
+# 2부 — 돌아가는 원리 & 파일 상세
 
 ## 시스템 한눈에
 
@@ -12,7 +112,7 @@
 데이터 수집                전략 평가                실전 운용
 ┌─────────────┐          ┌─────────────┐         ┌─────────────┐
 │ KIS API     │          │ strategies/ │         │ live_signal │
-│   ranking   │ ──────► │   14종 등록  │ ──────►│   매일 16:30 │
+│   ranking   │ ──────► │   14종 등록  │ ──────►│   매일 15:50 │
 │   분봉      │          │             │         │             │
 │ pykrx       │          │ engine.py   │         │ paper_      │
 │   3년 일봉  │          │   비교 표   │         │   tracker   │
@@ -72,12 +172,14 @@
 |---|---|
 | 진입 | 종가가 직전 500 영업일 신고가 돌파 |
 | 시장 게이트 | 시장 평균 등락률의 60일 MA > 0 (강세장만) |
-| 유동성 | 거래대금 ≥ 10억 (전일) |
+| 유동성 | 거래대금 ≥ 30억 (신호일) — 2026-06-11 백테스트와 통일 |
 | 진입가 | 신호 다음 영업일 시가 |
 | 청산 | 진입 후 40 영업일 종가 |
 | 자본 운용 | 최대 10종목 동시보유 (max_concurrent), 자본 1/N 분배 |
 
 ### 실측 성과 (3년치 macro_data, 단방향 -30% 컷오프 적용)
+
+> ⚠️ **구버전 측정 기준** (컷오프 + 원가평가) — 현재 공식 수치는 최상단 요약 및 3부 업데이트 내역 참조 (CAGR +139.9%, MDD -42.6%, Sharpe 1.34).
 
 | 지표 | 값 |
 |---|---|
@@ -128,7 +230,7 @@ pykrx 의 raw OHLCV 는 수정주가 미반영 → 액면분할 시 가짜 -80% 
 ## 1.7 Paper Trading 사용법
 
 ### 매일 운영 (자동)
-- **KIS_Paper 작업** 매일 16:30 자동 실행
+- **KIS_Paper 작업** 매일 15:50 자동 실행
 - `live_signal.py` → 오늘 신호 종목 출력 + `paper_signals.csv` 추가
 - `paper_tracker.py` → 누적 매매 + 현재 보유 + 자본 곡선
 
@@ -262,7 +364,7 @@ py -3.11 backtest.py 20260604 AB        # 둘 다
 - ETF/우선주 제외
 - 신호 종목 → 콘솔 출력 + `paper_signals.csv` 누적 (멱등)
 
-**자동 호출**: `run_paper.bat` 가 매일 16:30 호출 (KIS_Paper 작업).
+**자동 호출**: `run_paper.bat` 가 매일 15:50 호출 (KIS_Paper 작업).
 
 ### paper_tracker.py *(MAIN)*
 **용도**: paper_signals.csv 의 모든 신호로 가상 매매 수행. 누적 손익 + 보유 포지션 출력.
@@ -520,7 +622,7 @@ python backtest_swing.py
 | 매일 09:00~14:30 (30분 간격) | KIS_Ranking | run_collector.bat → data_collector.py today (분봉 ranking + 지수 snapshot) |
 | 매일 15:40 | KIS_EOD | run_collector.bat → data_collector.py today (장 마감 종합) |
 | 매일 16:00 | KIS_Backtest | run_backtest.bat → backtest.py (단타 v2 별건) |
-| **매일 16:30** | **KIS_Paper** ⭐ | **run_paper.bat → live_signal + paper_tracker (메인)** |
+| **매일 15:50** | **KIS_Paper** ⭐ | **run_paper.bat → live_signal + paper_tracker (메인)** |
 | 매일 평일 19:00 | KIS_DART | run_dart.bat → dart_collector.py today |
 | 매월 1일 02:00 | KIS_Monthly | monthly_xlsx_builder.py |
 
@@ -638,3 +740,238 @@ C:\fin\outputs\
 | 호가/체결강도 | 미지원 (유료 필요) | — |
 
 각 데이터 1~2주 누적되면 detector 에 신호로 통합. 통합 패턴은 D-1 외인 필터와 동일 (`config.ENABLE_*_FILTER` 토글로 on/off 비교).
+
+
+---
+
+# 3부 — 업데이트 내역 (최신순)
+
+## 2026-06-13 (3차) — 전 수집기 "결측 우선" 정책
+
+모든 일자별 수집기가 수집 전에 **결측(빈 날짜)을 먼저 스캔하고 구멍부터 채우도록** 개편:
+
+| 수집기 | 결측 처리 |
+|---|---|
+| `gap_scan.py` (신설) | 공용 스캐너 — 최근 N영업일 결측 목록 + 휴장 마커(.holiday) |
+| update_macro_daily | 마지막 파일 이후만 → **보유 구간 전체 스캔** (중간 구멍 자동 복구) |
+| pykrx_collector | 휴장일에 `.holiday` 마커 생성 → 매일 재시도 낭비 제거 |
+| us_market_collector | 최근 14영업일 결측 백필 (시계열 1회 다운로드 후 날짜별 분배) |
+| krx_collector (공매도) | 최근 10영업일 결측 백필 후 전일분 |
+| dart_collector | 최근 10영업일 결측 백필 후 당일분. **[버그 수정] 인자 없이 호출 시 사용법만 출력하고 종료하던 문제** (가드의 재수집이 무효였음) → 기본 동작 today |
+| macro_collector | 기존부터 30일 윈도우 병합 = 이미 결측 우선 |
+| kiwoom_collector | 일별 스냅샷이라 과거 재조회 불가 — 이력은 kiwoom_backfill 담당 (구조적 한계) |
+| data_collector (KIS 분봉/랭킹) | 장중 스냅샷이라 과거 재조회 불가 — 놓친 날은 복구 불가 (구조적 한계) |
+
+적용 직후 실측: us_market 12일·공매도 3일 결측 발견됨 → 다음 자동 실행(20:00 가드)에서 자동 복구.
+
+## 2026-06-13 (2차) — 진행률 게이지 (progress.py)
+
+- `progress.py` 신설 — 퍼센트 게이지 + 경과/예상 잔여시간(ETA). 장시간 배치 공용.
+  적용: kiwoom_backfill (25종목마다), pykrx_collector (신규 10일마다).
+  예: `[████████░░░░] 41.9% (665/1,587) 경과 12분 · 남은 ~17분 | 저장 600 실패 25`
+- 앞으로 새로 만드는 장시간 작업에는 기본 적용.
+- 참고: 백필이 이미 실행 중이어도 무관 — 다음 실행부터 적용 (이어받기 지원).
+
+## 2026-06-13 — 키움 신용·프로그램 과거 백필 체계
+
+- `kiwoom_backfill.py` 신설 (조회 전용): trades_history_v3 의 (종목, 신호일) 지점만
+  연속조회(next-key)로 거슬러 수집 — 전 종목·전 기간이 아니라 학습에 필요한 곳만.
+  종목당 파일 저장이라 **중단해도 재실행 시 이어받음**.
+  - 백필: `python kiwoom_backfill.py` (수 시간) / 테스트: `python kiwoom_backfill.py credit 20`
+  - 피처 생성: `python kiwoom_backfill.py merge` → `ai_data/kiwoom_hist_features.csv`
+    (crd_remn_rt 신용잔고율, crd_remn_chg_5d 잔고 5일 증감, prm_net_5d_ratio 프로그램
+    5일 순매수/거래대금)
+  - 재학습: `python make_trades_history_v3.py` → `python ai_trainer_v4.py`
+    (v3 가 피처 자동 병합, v4 가 자동 인식 — 없으면 기존 피처만 사용)
+- 한계 (정직): 키움 이력 제공 범위는 실행 로그의 "도달 최소일"에서 확인.
+  상장폐지 종목은 조회 불가 → 피처 결측 (라벨 아님 — XGBoost 가 NaN 자체 처리).
+- **실행 순서 권장**: 월요일 키움 첫 자동매매(09:01) 정상 확인 → 그 후 백필 실행.
+
+## 2026-06-12 (6차) — 키움 대시보드 통합 + 키움 수급 수집기
+
+- **대시보드 개편**: `dashboard.html` 최상단에 키움 모의계좌 섹션 (예수금·보유·당일 주문)
+  배치 — 메인. 기존 Paper(X2) 추적은 참고용으로 그 아래 유지 (두 모드 병행 비교 목적).
+  데이터 소스: kiwoom_trader 가 status 때마다 저장하는 `db/kiwoom/snapshot.json` +
+  `orders_*.csv` + `equity_history.csv` (일별 추이 누적).
+- **`kiwoom_collector.py` 신설** (조회 전용 — 주문 코드 없음):
+  ka10013 신용매매동향 → `db/credit/` (검증 안 되던 KIS probe 를 키움으로 대체),
+  ka90013 종목별 프로그램매매 → `db/program/`. 대상 = 최근 신호 + 랭킹 상위.
+  실전 키 있으면 조회용으로 우선 사용 (모의서버 시세 제한 회피).
+  20:00 recollect_guard 에 credit/program 항목으로 등록.
+- 향후 AI 피처 후보: 신용잔고 증감·프로그램 순매수 (표본 쌓인 뒤 v4 에 추가 검토).
+
+## 2026-06-12 (5차) — 키움 모의: 시간외단일가 미지원 확인 → 원본 모드 전환
+
+- 키움 모의서버는 **지정가/시장가만 지원** (시간외단일가 62 불가) — 공식 가이드 확인.
+- kiwoom_trader 를 백테스트 원본 모드로 전환: 09:01 전일 신호 시장가 매수(≈시가),
+  15:21 만기 시장가 매도(마감 동시호가 ≈ 종가). 스케줄 KIS_Kiwoom 16:05 →
+  **KIS_KiwoomBuy 09:01 + KIS_KiwoomSell 15:21** 로 교체 (`install_scheduler.ps1` 재실행 필요).
+- 매수 수량은 신호일 종가 기준 × 0.97 (갭상승 여유). 만기 계산도 진입=신호+1일로 정합.
+- 결과적으로 키움 모의 = 원본 모드 / paper_tracker = X2 모드 — 두 진입 방식 병행 실측.
+
+## 2026-06-12 (4차) — 전체 폴더 통합 재점검 수정
+
+1. compare_exit_rules / compare_trailing_grid / compare_trailing_fine — 잔존하던
+   `min_gross_pct=-30` 컷오프 제거 (CA필터가 대체. 이전 비교 결과는 재실행 필요).
+2. `daily_loader` 에 pickle 캐시 추가 — 8년 데이터(1,961 CSV) 풀스캔이 단계마다
+   반복되던 것을 1회만 수행. 캐시는 파일 추가/변경 시 자동 무효화
+   (`macro_data/daily/_daily_cache.pkl`). 15:50 체인이 16:05 키움 주문 전에 여유있게 종료.
+3. dashboard_generator KPI 교정 — CA필터 적용 + MTM(일별 종가 평가) + 랭킹 슬롯 +
+   비X2 경로 off-by-one 수정. 이제 대시보드 수치가 백테스트/페이퍼와 동일 기준.
+4. kiwoom_trader — 시간외단일가 매도에 당일 종가 지정(가격 필수 거부 대비),
+   주문 멱등 비교의 CSV 문자열("True") 버그 수정.
+
+참고(수정 안 함): `dashboard.py`·`ai_feature_engine.py`·`seed_paper_signals.py` 는
+구버전 고아 스크립트 — 자동화에서 미사용. 재실행하지 말 것 (구룰 적용됨).
+키움 buy 는 "오늘 날짜 신호"만 매수 — KRX 집계 지연일은 매수 0건이 정상 (룰상 신호 당일만 유효).
+
+## 2026-06-12 (3차) — 키움증권 모의투자 자동매매 연동
+
+- `kiwoom_trader.py` 신설 — `kiwoom-rest-api`(PyPI, REST 래퍼) 기반.
+  인증은 환경변수(KIWOOM_API_KEY/SECRET/USE_SANDBOX) 주입 방식, 모듈별 클래스
+  (Order.stock_buy_order_request_kt10000 등) 호출.
+  매도(40일 만기) → 매수(오늘 신호, 거래대금 랭킹·빈 슬롯 1/N 배분, 시간외단일가) → 상태.
+  멱등(당일 중복 주문 방지), 주문 감사 로그 `db/kiwoom/orders_*.csv`.
+- config.py 에 KIWOOM_ENV/키 로드 추가. **prod 주문 차단 안전장치 내장.**
+- `run_kiwoom.bat` + 스케줄러 `KIS_Kiwoom` 매일 16:05 등록 (시간외단일가 16:00 개장 직후).
+- 응답 스키마는 방어적 파싱 — 첫 `status` 실행에서 필드 식별 실패 경고가 나오면
+  로그의 raw keys 를 보고 `_pick()` 후보에 키를 추가하면 됨.
+- 이로써 검증 체계 3중화: 백테스트(시뮬) / paper_tracker(가상) / 키움 모의계좌(실제 체결·슬리피지).
+
+## 2026-06-12 (2차) — 8년 백필 완료 + 데이터 정화 + AI 7년 검증 결과
+
+**데이터**:
+- 8년 백필 완료: 정상 일봉 1,961일 (2018-06-14 ~ ). 단, KRX 가 공휴일에 "전 종목 0원"
+  프레임을 반환해 **가짜 휴장일 파일 125개**가 섞여 있던 것을 발견 → `.holiday` 로 격리.
+- **치명 버그 수정**: 장중/장전에 당일 파일이 0원으로 미리 생성되면 멱등 스킵 때문에
+  그날 신호가 통째로 누락됨 (실제로 20260612.csv 가 0원으로 생성돼 있었음 → 제거).
+  pykrx_collector 에 ① 전 종목 0원 프레임 저장 금지, ② 당일 15:40 이전 수집 금지 가드 추가.
+  daily_loader 에도 close<=0 행 제거 방어선 추가.
+
+**AI v4 — 7년 데이터 재검증 (정직한 결과)**:
+- 학습셋 28,320 매매 (2019-06~2026-05, 2020 폭락·2022 약세장 포함)
+- **test AUC 0.480, 확률 분위 스프레드 -6.69%p (역전)** — 13개월 데이터에서 보였던
+  +4.68%p 스프레드는 강세장 한 구간에 과적합된 신기루였음이 확인됨.
+- 결론: **AI 는 표시 전용 확정 (USE_AI=False), 사이징 연동 보류.** 주간 학습은 유지하되
+  모니터링 용도. 수익의 원천은 전략 룰 + 리스크 관리이지 AI 가 아님.
+
+## 2026-06-12 — 매크로 지표 연속 수집 + USAGE 재구성
+
+- `macro_collector.py` 신설 — stock.db 의 macro_indicators(VIX/SOX/환율/KOSPI 등)가
+  2026-05 에서 끊겨 AI 피처가 늙어가는 문제 해결. yfinance 로 `macro_data/indicators.csv`
+  누적 (stock.db 와 동일 스키마). 20:00 recollect_guard 가 매일 자동 실행.
+- `make_trades_history_v3.py` — 매크로 피처를 stock.db + indicators.csv 병합으로 읽도록
+  변경 (최신분 우선, stock.db 없어도 동작).
+- USAGE.md 재구성: 1부 사용법 / 2부 원리·파일 상세 / 3부 업데이트 내역.
+  앞으로 모든 변경은 이 문서에 자동 반영하고 이 구조를 유지함.
+- 증권사 API 가이드 추가 (1부 1.5): 신용잔고/프로그램매매 보강 시
+  키움 REST API 또는 LS증권 xingAPI 권장.
+
+## 2026-06-11 코드 검토 및 수정 내역
+
+### 성과 측정 교정 (효과성 검증 결과)
+
+| # | 문제 | 수정 |
+|---|---|---|
+| 1 | `capital_simulator` 의 -30% 일괄 컷오프가 실제 -60~-75% 손실 186건(11.7%)을 "액면분할 의심"으로 삭제 → CAGR/MDD/Sharpe 과대평가 | 컷오프 기본 해제. `strategies/_swing_base.find_corporate_action_dates()` 가 KRX 등락률(기준가 조정 반영) vs 원시 종가 비율의 10%p 괴리로 기업행위 발생일을 감지해 **해당 매매만**(21건) 제외 |
+| 2 | MDD 가 보유 포지션을 진입원가로 평가 → 보유 중 평가손실 미반영 (-8% 허상) | `simulate_capital(price_map=, trading_dates=)` 로 일별 종가 mark-to-market 평가. 실제 MDD -42.6% |
+| 3 | Sharpe 가 entry/exit 일자만의 불규칙 곡선에 √252 적용 → 과대 | MTM 일별 곡선 기준으로 재계산 (1.34) |
+| 4 | 백테스트(거래대금 30억, ETF 미제외) vs live_signal(10억, ETF 제외) 유니버스 불일치 | live_signal 30억으로 통일 + `daily_loader.filter_universe()` 로 백테스트도 ETF/우선주/스팩 제외 (생존편향 방지 위해 이름 미상 종목은 유지) |
+| 5 | walk-forward 의 "OOS 통과 전략 선별"은 OOS 재사용 → 낙관 편향 | 코드 수정 불가(방법론 한계) — README 에 명시. 진짜 OOS = paper trading 실측 |
+| 6 | backtest_swing 이 15:20 진입 조건에 당일(장 마감 후 확정) 외인 수급 사용 → look-ahead | 전일(D-1) 수급으로 교체 |
+
+### 프로그램 버그 수정
+
+| # | 문제 | 수정 |
+|---|---|---|
+| 7 | 스케줄러 어디에도 macro_data 갱신이 없어 live_signal 이 옛 데이터로 동작 (6/05 에서 멈춰 있었음) | `update_macro_daily.py` 신설, run_paper.bat 첫 단계로 추가 |
+| 8 | run_tick_collector.bat 이 bare `python` 호출 → 즉시 실패 시 5초마다 무한 재실행 (로그 4.4만 줄) | venv python 우선 + 연속 5회 즉사 시 중단 |
+| 9 | paper_tracker `USE_AI=True` 시 미정의 변수 `skipped_by_ai` NameError | 해당 출력 제거 |
+| 10 | `HighWithFiltersStrategy` 가 `time_stop_pct` 를 받기만 하고 미전달 → 설정해도 무시 | 전달 추가 (compare_exit_rules 재실행 권장 — 이전 비교 결과 무효일 수 있음) |
+| 11 | paper_tracker 비X2 모드 청산이 entry+40일 (백테스트는 entry+39일) off-by-one | entry+39 로 통일 |
+| 12 | make_trades_history_v2 의 vol/tv MA20 shift 가 종목 경계 무시 → feature 오염 | 그룹 내 shift 로 교체 (AI 모델 재학습 권장) |
+| 13 | run_paper.bat EXITCODE 가 마지막 단계만 반영 | 단계별 실패 누적 |
+| 14 | exit_rule_engine -2% 케이스 메시지 "강세 매도" 오기 | "급락 — 시가 매도" |
+| 15 | 비용 관련: paper 0.33% vs 백테스트 0.43% | 불일치 아님 확인 (X2 매수 슬리피지 +2% 별도 반영) — 주석으로 문서화. 거래세 0.20%는 현행 0.15%보다 보수적 (유지) |
+
+### 2026-06-11 추가 개선: 랭킹 슬롯 (적용됨) + 청산 그리드 (참고)
+
+- **랭킹 슬롯**: 슬롯 부족 시 신호일 거래대금 큰 순으로 배정 (`StrategyTrade.score`).
+  동일 매매셋 검증 — CAGR 동급(-1%p), **MDD -42.6% → -29.5%**, Sharpe 1.34 → 1.38. 기본 적용됨.
+- **청산 오버레이 그리드** (`results/exit_grid_20260611.csv`): 이 표본(강세장 13개월)에선
+  하드 손절(-15/-20%)은 CAGR만 깎고 MDD 개선 없음 (KOSDAQ 변동성에 whipsaw).
+  유일하게 경합하는 옵션은 **트레일링 -12% (활성화 +15%)**: Sharpe 1.40, 승률 61.6%,
+  단 CAGR -24%p. 꼬리위험 방어 목적이면 채택 가능, 아니면 무손절+랭킹 유지가 합리적.
+  주의: 약세장 표본이 없어 손절의 진가치는 미검증.
+- **갭하락 손절 체결 현실화**: stop 경로에서 시가 < 손절가면 시가 체결로 수정 (이전엔 손절가 체결 가정 = 낙관).
+
+### 페이퍼 가상매매 재계산 (2026-06-11, 신호 1,597건)
+
+| 방식 | CAGR | MDD | Sharpe |
+|---|---|---|---|
+| 구방식 (-30컷 + 원가평가) | +227.9% | -6.4% | +2.52 |
+| **현재 시스템 (CA필터+MTM+랭킹)** | **+176.5%** | **-32.4%** | **+1.58** |
+| + 거래대금 30억 룰 | +187.4% | -36.8% | +1.57 |
+
+대시보드의 기존 KPI 는 구방식 기준이라 과대평가 — `dashboard_generator.py` 재실행 시에도
+자체 계산 로직이 simulate_capital 을 쓰지 않으므로 수치 해석에 주의.
+
+### 2026-06-11 추가: 수집 가드 + 신규 수집기
+
+**자동화 변경 — `install_scheduler.ps1` 재실행 필수** (KIS_Recheck 신규):
+
+| 시각 | 작업 | 내용 |
+|---|---|---|
+| 15:50 | KIS_Paper | (변경) macro 증분 갱신 → 신호 → 추적 → 대시보드 |
+| **20:00** | **KIS_Recheck** (신규) | **당일 수집 검증 → 누락분 재수집 → 신호/대시보드 후속 갱신** |
+
+`recollect_guard.py` 검사 항목: macro_daily / kis_daily / investor / index /
+short / dart / us_market / credit / ai_features.
+필수 항목(macro, kis_daily, us_market)이 재수집 후에도 누락이면 exit 1 + `logs/recheck_*.log` 에 기록.
+macro 가 뒤늦게 채워진 날은 live_signal → paper_tracker → dashboard 를 자동 재실행해 신호 누락을 방지.
+
+**신규 수집기**:
+
+- `credit_collector.py` — 종목별 신용잔고 (KIS API). ⚠️ TR ID 는 공식 문서로
+  재확인 못 한 후보값 — 첫 실행 시 자동 probe 후 실패하면 로그에 안내.
+  실패 시 KIS 개발자센터에서 "신용잔고" API 의 URL/TR 확인 후
+  `CANDIDATES` 리스트에 추가. `python credit_collector.py probe` 로 단독 검증 가능.
+- `dart_fundamentals.py` — DART 재무제표 (매출/영업이익/순이익).
+  `db/fundamentals/summary.csv` 누적 → 퀄리티 필터 개발용. 대상은 최근 신호 + 랭킹 상위 종목.
+- `adjusted_probe.py` — CA필터 감지 결과를 pykrx 수정주가와 표본 대조 (주 1회 수동 권장).
+
+**밀린 데이터 즉시 백필** (지금 바로 한 번):
+```bat
+run_recheck.bat
+```
+macro_data(6/05 이후), us_market(6/08 이후) 누락분을 자동 보충하고 신호를 재검사함.
+
+**공매도 잔고 복구 시도**: 현재 pykrx 1.2.8 에서 잔고 API 가 깨져 거래량 fallback 중.
+`pip install -U pykrx` 후 `python krx_collector.py both` 로 잔고 수집 복구 여부 확인.
+
+### 2026-06-11 추가: AI 파이프라인 v4 (주간 학습)
+
+**Stock_AI_Project/data/stock.db 판정**: korea_stocks 등 가격 테이블은 상장폐지 종목
+누락(생존편향 — 2023-06 상장 1,642 중 133개 부재)으로 **라벨 생성에 사용 금지**.
+news(2015~2026, 96만건 감성)와 macro_indicators(VIX·SOX·환율·KOSPI 11년)는 **피처로 채택**.
+
+- `make_trades_history_v3.py` — 3개 전략 풀링(h500_40_MKT/h252_40/h500_20) →
+  표본 1,597 → **8,340건**. 종목 피처 + 뉴스 감성 + 매크로 레짐 병합.
+- `ai_trainer_v4.py` — 라벨 big-win(net≥+10%), purged split + 40일 embargo.
+  첫 검증: AUC 0.545, **확률 5분위 스프레드 Q5−Q1 = +4.68%p** (사이징 근거로 유의미).
+  단 단일 test 구간·강세장 표본 — 수개월 안정성 확인 전까지 USE_AI=False 유지.
+- run_paper.bat: AI 학습은 **금요일만** 실행 (매일 재학습은 노이즈).
+- **데이터 깊이 확장 (권장, 1회)**: `python pykrx_collector.py 8`
+  → 8년치 백필 (2020 폭락·2022 약세장 포함, 기존 파일 자동 스킵, 수 시간 소요 — 밤에 실행).
+  완료 후 금요일 학습에서 표본·레짐이 자동 확장됨.
+
+### 수정 후 재실행 필요 목록
+
+1. `python make_trades_history.py && python make_trades_history_v2.py` — CA필터/유니버스 반영 재생성
+2. `python ai_trainer_v2.py && python ai_trainer_v3.py` — 교정된 데이터로 재학습
+3. `python walkforward.py` — 교정된 유니버스 기준 견고성 재확인
+4. `powershell -ExecutionPolicy Bypass -File .\install_scheduler.ps1` — 스케줄 재등록 (run_paper.bat 변경 반영)
+
+---
+
+단타 박스권 룰 v2 는 비용 한계로 break-even 미달 → 별건으로만 유지 (자동 백테스트).

@@ -48,55 +48,72 @@ SYMBOLS = {
 }
 
 
-def collect(date_str=None):
-    if date_str is None:
-        date_str = datetime.now().strftime("%Y%m%d")
-
-    yyyy_mm = f"{date_str[:4]}-{date_str[4:6]}"
-    out_dir = f"{US_DIR}/{yyyy_mm}"
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = f"{out_dir}/{date_str}.csv"
-
-    if os.path.exists(out_path):
-        print(f"[us_market] 이미 있음, 스킵: {out_path}")
-        return
-
+def _download_series(days=35):
+    """심볼별 일별 종가 시계열 1회 다운로드 → {symbol: [(us_date, close), ...]}"""
     end = datetime.now()
-    start = end - timedelta(days=10)  # 여유분
-
-    rows = []
+    start = end - timedelta(days=days)
+    out = {}
     for name, ticker in SYMBOLS.items():
         try:
             df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
-            if df.empty:
+            if df is None or df.empty:
                 print(f"  [warn] {ticker}: 빈 데이터")
                 continue
-            last = df.iloc[-1]
-            prev = df.iloc[-2] if len(df) >= 2 else last
-            close = float(last["Close"].iloc[0] if hasattr(last["Close"], "iloc") else last["Close"])
-            prev_close = float(prev["Close"].iloc[0] if hasattr(prev["Close"], "iloc") else prev["Close"])
-            change_pct = (close / prev_close - 1) * 100
-            us_date = str(df.index[-1].date()).replace("-", "")
-            rows.append({
-                "symbol": name, "ticker": ticker, "date": us_date,
-                "close": round(close, 4),
-                "prev_close": round(prev_close, 4),
-                "change_pct": round(change_pct, 3),
-            })
-            print(f"  {name:4} {ticker:6}: {change_pct:+.2f}% (close {close:,.2f})")
+            close = df["Close"]
+            if hasattr(close, "columns"):
+                close = close.iloc[:, 0]
+            out[name] = [(str(idx.date()).replace("-", ""), float(v))
+                         for idx, v in close.items() if v == v]
         except Exception as e:
             print(f"  [warn] {ticker}: {e}")
+    return out
 
+
+def _save_for_date(series, kr_date):
+    """KR 날짜 기준 '그 전 미국 마감' 행을 골라 저장. (과거 결측 백필 가능)"""
+    out_dir = f"{US_DIR}/{kr_date[:4]}-{kr_date[4:6]}"
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = f"{out_dir}/{kr_date}.csv"
+    if os.path.exists(out_path):
+        return True
+    rows = []
+    for name, ser in series.items():
+        past = [(d, c) for d, c in ser if d < kr_date]   # KR 일자 이전 미국 세션
+        if len(past) < 2:
+            continue
+        (pd_, pc), (ld, lc) = past[-2], past[-1]
+        rows.append({"symbol": name, "ticker": SYMBOLS[name], "date": ld,
+                     "close": round(lc, 4), "prev_close": round(pc, 4),
+                     "change_pct": round((lc / pc - 1) * 100, 3)})
     if not rows:
-        print(f"[us_market] 빈 결과")
-        return
-
+        print(f"[us_market] {kr_date}: 데이터 없음")
+        return False
     with open(out_path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=["symbol","ticker","date","close","prev_close","change_pct"])
-        writer.writeheader()
+        w = csv.DictWriter(f, fieldnames=["symbol", "ticker", "date", "close",
+                                          "prev_close", "change_pct"])
+        w.writeheader()
         for r in rows:
-            writer.writerow(r)
-    print(f"[us_market] {len(rows)} 지표 저장: {out_path}")
+            w.writerow(r)
+    print(f"[us_market] {kr_date}: {len(rows)} 지표 저장 (US {rows[0]['date']} 마감)")
+    return True
+
+
+def collect(date_str=None):
+    """[2026-06-13 개편] 결측 우선: 최근 14영업일 결측을 먼저 채우고 오늘분 저장."""
+    from gap_scan import recent_missing
+    targets = recent_missing(US_DIR, lookback_bdays=14)
+    if date_str and date_str not in targets:
+        targets.append(date_str)
+    if not targets:
+        print("[us_market] 결측 없음 — 최신 상태")
+        return
+    print(f"[us_market] 대상 {len(targets)}일 (결측 우선): {targets}")
+    series = _download_series()
+    if not series:
+        print("[us_market] 다운로드 실패")
+        return
+    for d in targets:
+        _save_for_date(series, d)
 
 
 def load_latest():

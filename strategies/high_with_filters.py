@@ -9,7 +9,7 @@
 
 import pandas as pd
 from .base import BaseStrategy
-from ._swing_base import _make_trades_for_signals
+from ._swing_base import _make_trades_for_signals, _make_trades_with_stops
 
 
 class HighWithFiltersStrategy(BaseStrategy):
@@ -19,7 +19,15 @@ class HighWithFiltersStrategy(BaseStrategy):
     def __init__(self, lookback_days=500, holding_days=40,
                  use_market_filter=True, market_ma_days=60,
                  use_volume_filter=True, vol_mult=1.5,
-                 min_trading_value=3_000_000_000, name=None):
+                 min_trading_value=3_000_000_000,
+                 stop_loss_pct=None, trailing_peak_pct=None,
+                 trailing_activate_pct=10.0,
+                 time_check_days=None, time_check_min_pct=None,
+                 time_stop_pct=None,
+                 entry_at_close=False, slippage_pct=0.0,
+                 gap_filter_pct=None,
+                 exit_slippage_pct=0.0,
+                 name=None):
         """
         min_trading_value 권장값 (자본 규모별):
           - 1억 이하 베팅:  3_000_000_000 (30억, 현재 기본값)
@@ -33,6 +41,16 @@ class HighWithFiltersStrategy(BaseStrategy):
         self.use_vol = use_volume_filter
         self.vol_mult = vol_mult
         self.min_tv = min_trading_value
+        self.stop_loss_pct = stop_loss_pct
+        self.trailing_peak_pct = trailing_peak_pct
+        self.trailing_activate_pct = trailing_activate_pct
+        self.time_check_days = time_check_days
+        self.time_check_min_pct = time_check_min_pct
+        self.time_stop_pct = time_stop_pct
+        self.entry_at_close = entry_at_close
+        self.slippage_pct = slippage_pct
+        self.gap_filter_pct = gap_filter_pct
+        self.exit_slippage_pct = exit_slippage_pct
         if name:
             self.name = name
 
@@ -66,6 +84,27 @@ class HighWithFiltersStrategy(BaseStrategy):
 
         df["signal"] = sig
 
+        # 손절/trailing/time_stop 옵션 있으면 stop-aware 경로, 아니면 기존 벡터화 경로
+        use_stops = (self.stop_loss_pct is not None or self.trailing_peak_pct is not None
+                     or self.time_check_days is not None)
+        if use_stops:
+            return _make_trades_with_stops(
+                df, holding_days=self.holding,
+                strategy_name=self.name, costs=costs,
+                stop_loss_pct=self.stop_loss_pct,
+                trailing_peak_pct=self.trailing_peak_pct,
+                trailing_activate_pct=self.trailing_activate_pct,
+                time_check_days=self.time_check_days,
+                time_check_min_pct=self.time_check_min_pct,
+                time_stop_pct=self.time_stop_pct,  # [fix] 이전엔 전달 누락 → 항상 무시됐음
+            )
+        # 애프터마켓 매수 옵션 (entry_at_close=True) → 같은 날 close, entry_lag=0
+        entry_col = "close" if self.entry_at_close else "open"
+        entry_lag = 0 if self.entry_at_close else 1
         return _make_trades_for_signals(
             df, holding_days=self.holding,
-            strategy_name=self.name, costs=costs)
+            strategy_name=self.name, costs=costs,
+            entry_col=entry_col, entry_lag=entry_lag,
+            slippage_pct=self.slippage_pct,
+            gap_filter_pct=self.gap_filter_pct,
+            exit_slippage_pct=self.exit_slippage_pct)

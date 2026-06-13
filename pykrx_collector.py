@@ -22,12 +22,26 @@ def collect_macro_data(start_date_str, end_date_str, market="KOSDAQ"):
     date_range = pd.bdate_range(start=start_date_str, end=end_date_str)
     total_days = len(date_range)
     
+    today_str = datetime.today().strftime("%Y%m%d")
+    now_hm = datetime.now().strftime("%H%M")
+
+    import time as _time
+    from progress import bar as _bar
+    _t0 = _time.time()
+    _n_fetched = 0
+
     for i, dt in enumerate(date_range):
         date_str = dt.strftime("%Y%m%d")
         save_path = f"{DATA_DIR}/{date_str}.csv"
-        
-        # 이미 수집된 날짜는 건너뛰기 (중간에 끊겨도 이어받기 가능)
-        if os.path.exists(save_path):
+
+        # 이미 수집된 날짜/휴장 마커는 건너뛰기 (중간에 끊겨도 이어받기 가능)
+        if os.path.exists(save_path) or os.path.exists(save_path + ".holiday"):
+            continue
+
+        # [fix] 당일 데이터는 장 마감(15:40) 전에 수집 금지 — 미확정/0원 데이터가
+        #       저장되면 이후 멱등 스킵 때문에 그날 신호가 통째로 누락됨.
+        if date_str >= today_str and now_hm < "1540":
+            print(f"  -> {date_str} 당일 장마감 전 — 수집 보류 (15:50 KIS_Paper 가 처리)")
             continue
             
         print(f"[{i+1}/{total_days}] {date_str} 수집 시도 중...")
@@ -41,10 +55,20 @@ def collect_macro_data(start_date_str, end_date_str, market="KOSDAQ"):
                 # 2. 일봉 데이터 수집
                 df_ohlcv = stock.get_market_ohlcv(date_str, market)
                 
-                # 휴장일(공휴일) 체크: 빈 데이터면 깔끔하게 패스
+                # 휴장일(공휴일) 체크: 빈 데이터면 마커 남기고 패스 (재시도 낭비 방지)
                 if df_ohlcv is None or df_ohlcv.empty:
-                    print(f"  -> {date_str} 휴장일(데이터 없음). 건너뜁니다.")
+                    if date_str < today_str:   # 과거 확정 휴장만 마커 (오늘은 집계 전일 수 있음)
+                        open(save_path + ".holiday", "w").close()
+                    print(f"  -> {date_str} 휴장일(데이터 없음). 마커 후 건너뜁니다.")
                     break # 다음 날짜로 넘어감
+
+                # [fix] KRX 가 공휴일에 '전 종목 0원' 프레임을 주는 경우가 있음 —
+                #       이걸 저장하면 가짜 거래일이 생겨 신호/청산일 계산이 오염됨.
+                if (df_ohlcv["종가"] == 0).all():
+                    if date_str < today_str:
+                        open(save_path + ".holiday", "w").close()
+                    print(f"  -> {date_str} 휴장일(전 종목 0원). 마커 후 건너뜁니다.")
+                    break
                     
                 df_ohlcv = df_ohlcv.reset_index()
                 df_ohlcv.rename(columns={'티커': 'code', '시가': 'open', '고가': 'high', '저가': 'low', '종가': 'close', '거래량': 'volume'}, inplace=True)
@@ -73,8 +97,13 @@ def collect_macro_data(start_date_str, end_date_str, market="KOSDAQ"):
                 df_merged['date'] = date_str
                 
                 df_merged.to_csv(save_path, index=False, encoding="utf-8-sig")
-                print(f"  -> {date_str} 저장 완료.")
-                
+                _n_fetched += 1
+                if _n_fetched % 10 == 0:
+                    print("  " + _bar(i + 1, total_days, _t0,
+                          extra=f"신규수집 {_n_fetched}일"), flush=True)
+                else:
+                    print(f"  -> {date_str} 저장 완료.")
+
                 break # 성공했으므로 재시도 루프 탈출
                 
             except Exception as e:
@@ -87,6 +116,16 @@ def collect_macro_data(start_date_str, end_date_str, market="KOSDAQ"):
                     break
 
 if __name__ == "__main__":
+    # 사용법: python pykrx_collector.py [년수]   (기본 3년, 예: 8 → 8년치)
+    # 이미 수집된 날짜는 건너뛰므로 기간을 늘려 재실행하면 과거분만 추가 수집됨.
+    import sys
+    years = 3
+    if len(sys.argv) > 1:
+        try:
+            years = int(sys.argv[1])
+        except ValueError:
+            print(f"[warn] 년수 인자 '{sys.argv[1]}' 무시, 기본 3년")
     end_dt = datetime.today()
-    start_dt = end_dt - timedelta(days=365 * 3)
+    start_dt = end_dt - timedelta(days=365 * years)
+    print(f"[기간] 최근 {years}년 ({start_dt:%Y%m%d} ~ {end_dt:%Y%m%d})")
     collect_macro_data(start_dt.strftime("%Y%m%d"), end_dt.strftime("%Y%m%d"))

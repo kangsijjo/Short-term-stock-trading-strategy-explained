@@ -22,6 +22,7 @@ class StrategyTrade:
     cost_pct: float         # 비용 (수수료+세금+슬리피지)
     net_pct: float          # 비용 차감 후
     exit_reason: str = "default"
+    score: float = 0.0      # 신호 우선순위 (신호일 거래대금 등) — 슬롯 부족 시 랭킹용
 
 
 class BaseStrategy:
