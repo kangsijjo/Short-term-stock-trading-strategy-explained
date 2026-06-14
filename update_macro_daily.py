@@ -9,6 +9,11 @@ pykrx_collector.collect_macro_data 재사용 — 이미 수집된 날짜는 자�
 
 주의: 15:50 실행 시 당일 OHLCV 는 확정치, 투자자 수급은 잠정치일 수 있음.
 수급(foreign_net/inst_net)은 전략 신호에 사용되지 않고 AI feature 전용이라 허용.
+
+사용법:
+  python update_macro_daily.py                          # 결측 스캔 + 오늘까지 채움
+  python update_macro_daily.py --force 20260610         # 특정 날짜 강제 재수집
+  python update_macro_daily.py --force 20260608 20260610  # 날짜 범위 강제 재수집
 """
 
 import os
@@ -19,7 +24,45 @@ from datetime import datetime, timedelta
 from pykrx_collector import collect_macro_data, DATA_DIR
 
 
+def _force_delete(date_str):
+    """특정 날짜 파일/마커 삭제 → 재수집 가능 상태로 초기화."""
+    csv_path = f"{DATA_DIR}/{date_str}.csv"
+    hol_path = f"{DATA_DIR}/{date_str}.csv.holiday"
+    deleted = []
+    for p in (csv_path, hol_path):
+        if os.path.exists(p):
+            os.remove(p)
+            deleted.append(os.path.basename(p))
+    if deleted:
+        print(f"[update_macro][force] 삭제: {', '.join(deleted)}")
+    else:
+        print(f"[update_macro][force] {date_str} — 기존 파일 없음 (신규 수집)")
+
+
 def main():
+    args = sys.argv[1:]
+
+    # --force 모드: 특정 날짜(또는 범위) 강제 재수집
+    if args and args[0] == "--force":
+        dates = args[1:]
+        if not dates:
+            print("사용법: python update_macro_daily.py --force YYYYMMDD [YYYYMMDD_END]")
+            sys.exit(1)
+        if len(dates) == 1:
+            target_dates = [dates[0]]
+        else:
+            import pandas as pd
+            dr = pd.bdate_range(dates[0], dates[1])
+            target_dates = [d.strftime("%Y%m%d") for d in dr]
+
+        print(f"[update_macro][force] {len(target_dates)}일 강제 재수집: {target_dates}")
+        for d in target_dates:
+            _force_delete(d)
+        collect_macro_data(target_dates[0], target_dates[-1])
+        print("[update_macro][force] 완료.")
+        return
+
+    # 일반 모드: 결측 우선 정책
     files = sorted(glob.glob(f"{DATA_DIR}/*.csv"))
     today = datetime.today()
 

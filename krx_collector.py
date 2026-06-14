@@ -10,9 +10,11 @@ KRX 일부 endpoint 는 KRX 정보데이터시스템 로그인 필요. .env 에 
 호출 시점: 매일 평일 08:30 권장 (KIS_KRX 작업).
 
 사용법:
-  python krx_collector.py short          # 직전 영업일 공매도
-  python krx_collector.py short 20260603 # 특정 날짜
-  python krx_collector.py both           # short 만 실행 (credit 은 미지원)
+  python krx_collector.py short                            # 직전 영업일 공매도
+  python krx_collector.py short 20260603                   # 특정 날짜
+  python krx_collector.py both                             # short 만 실행 (credit 은 미지원)
+  python krx_collector.py short --force 20260603           # 특정 날짜 강제 재수집
+  python krx_collector.py short --force 20260601 20260610  # 날짜 범위 강제 재수집
 """
 
 import sys
@@ -30,15 +32,13 @@ except ImportError:
 
 
 def _last_business_day():
-    """직전 영업일 (월=일요일/토요일 건너뜀). 공휴일은 별도 처리 안 함 → 빈 응답 시 호출자가 처리."""
+    """직전 영업일 (주말만 고려). 공휴일은 빈 응답 시 호출자가 처리."""
     d = datetime.now() - timedelta(days=1)
-    # weekday(): 월=0, 화=1, ..., 토=5, 일=6
-    while d.weekday() >= 5:  # 토(5) / 일(6) skip
-        d = d - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
     return d.strftime("%Y%m%d")
 
 
-# 후방 호환 별칭
 def _yesterday():
     return _last_business_day()
 
@@ -50,25 +50,31 @@ def _month_dir(base_dir, date_str):
     return path
 
 
-def save_credit_balance(date_str=None):
-    """신용잔고 — pykrx 1.2.8 미지원. 호출 시 안내 메시지만 출력 후 종료.
+def _force_delete_short(date_str):
+    """특정 날짜 공매도 파일 삭제 → 재수집 가능 상태로 초기화."""
+    out_dir = _month_dir(config.DB_SHORT_DIR, date_str)
+    out_path = f"{out_dir}/{date_str}.csv"
+    if os.path.exists(out_path):
+        os.remove(out_path)
+        print(f"[short][force] 삭제: {out_path}")
+    else:
+        print(f"[short][force] {date_str} — 기존 파일 없음 (신규 수집)")
 
-    추후 KRX 정보데이터시스템 (data.krx.co.kr) 직접 호출 구현 시 활성화.
-    """
+
+def save_credit_balance(date_str=None):
+    """신용잔고 — pykrx 1.2.8 미지원. 안내 메시지만 출력."""
     print("[credit] 신용잔고는 현재 pykrx 1.2.8 에서 지원하지 않습니다. (skip)")
-    return
 
 
 def save_short_balance(date_str=None):
     """공매도 데이터 (종목별, 일자 기준) → db/short/YYYY-MM/YYYYMMDD.csv.
 
-    pykrx 의 get_shorting_balance_by_ticker 가 KRX 컬럼 변경으로 깨진 상태 (1.2.8).
+    pykrx get_shorting_balance_by_ticker 가 KRX 컬럼 변경으로 깨진 상태 (1.2.8).
     대체 함수 순서대로 시도:
-      1. get_shorting_balance_by_ticker  — 정상이면 잔고 정보
-      2. get_shorting_volume_by_ticker   — 공매도 거래량 (volume)
-      3. get_shorting_value_by_ticker    — 공매도 거래대금 (value)
-      4. get_shorting_balance_top50      — 잔고 TOP 50 (제한적)
-    첫 성공한 결과를 저장. fallback 사용 시 파일에 source 컬럼 추가.
+      1. get_shorting_balance_by_ticker
+      2. get_shorting_volume_by_ticker
+      3. get_shorting_value_by_ticker
+      4. get_shorting_balance_top50
     """
     if date_str is None:
         date_str = _yesterday()
@@ -104,7 +110,6 @@ def save_short_balance(date_str=None):
             else:
                 print(f"  [warn] {fn_name} 빈 결과")
         except Exception as e:
-            # 짧게만 (전체 traceback 은 노이즈)
             msg = str(e).split("\n")[0][:120]
             print(f"  [fail] {fn_name}: {msg}")
 
@@ -113,7 +118,7 @@ def save_short_balance(date_str=None):
         return
 
     df = df.reset_index()
-    df["__source"] = used_source  # 어떤 함수에서 받았는지 기록 (분석 시 정합성 체크용)
+    df["__source"] = used_source
     df.to_csv(out_path, encoding="utf-8-sig", index=False)
     print(f"[short] {len(df)}행 저장 (source={used_source}): {out_path}")
 
@@ -122,7 +127,7 @@ def backfill_missing(lookback_bdays=10):
     """[2026-06-13] 결측 우선: 최근 N영업일 중 빠진 공매도 파일부터 수집."""
     from gap_scan import recent_missing
     missing = recent_missing(config.DB_SHORT_DIR, lookback_bdays=lookback_bdays,
-                             include_today=False)  # 공매도는 T-1 데이터
+                             include_today=False)
     if missing:
         print(f"[short] 결측 {len(missing)}일 우선 수집: {missing}")
         for d in missing:
@@ -131,9 +136,33 @@ def backfill_missing(lookback_bdays=10):
 
 
 def main():
-    # 인자 없으면 기본 동작: 결측 백필 + 전일분 (스케줄러/가드 호환)
     cmd = sys.argv[1] if len(sys.argv) >= 2 else "both"
-    date_str = sys.argv[2] if len(sys.argv) >= 3 else None
+    rest = sys.argv[2:]
+
+    # --force 모드: python krx_collector.py short --force YYYYMMDD [YYYYMMDD_END]
+    force_mode = "--force" in rest
+    if force_mode:
+        fi = rest.index("--force")
+        force_dates = rest[fi + 1:]
+        if not force_dates:
+            print("사용법: python krx_collector.py short --force YYYYMMDD [YYYYMMDD_END]")
+            sys.exit(1)
+        if len(force_dates) == 1:
+            target_dates = [force_dates[0]]
+        else:
+            import pandas as pd
+            dr = pd.bdate_range(force_dates[0], force_dates[1])
+            target_dates = [d.strftime("%Y%m%d") for d in dr]
+
+        print(f"[short][force] {len(target_dates)}일 강제 재수집: {target_dates}")
+        for d in target_dates:
+            _force_delete_short(d)
+            save_short_balance(d)
+        print("[short][force] 완료.")
+        return
+
+    # 일반 날짜 인자
+    date_str = rest[0] if rest else None
 
     if cmd in ("both", "short") and date_str is None:
         backfill_missing()
@@ -143,7 +172,6 @@ def main():
     elif cmd == "short":
         save_short_balance(date_str)
     elif cmd == "both":
-        # 신용잔고는 미지원이라 안내만 출력, 실제로는 short 만 실행
         save_credit_balance(date_str)
         save_short_balance(date_str)
     else:

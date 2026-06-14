@@ -83,9 +83,9 @@ def checklist():
          ["kiwoom_collector.py", "credit"], False),   # 키움 ka10013 (KIS probe 대체)
         ("program",      f"./db/program/{MONTH}/{TODAY}.csv",
          ["kiwoom_collector.py", "program"], False),  # 키움 ka90013 프로그램매매
-        ("macro_ind",    None,             # AI 피처용 매크로 지표 — 매일 갱신 (멱등)
+        ("macro_ind",    None,             # 항상 재실행 (멱등) — 아래 ALWAYS_RUN 처리
          ["macro_collector.py"], False),
-        ("ai_features",  None,             # 파일 체크 대신 항상 갱신
+        ("ai_features",  None,             # 항상 재실행 (멱등) — 아래 ALWAYS_RUN 처리
          ["historical_feature_builder.py"], False),
     ]
 
@@ -117,17 +117,22 @@ def main():
         return
 
     # 3) 체크리스트 검사 + 재수집 (같은 수집기는 세션당 1회만 실행됨)
+    # pattern=None 항목은 "항상 실행" (멱등 수집기) — "누락" 이 아니라 "[갱신]" 로 출력
+    ALWAYS_RUN = {"macro_ind", "ai_features"}
     pending = []
     for name, pattern, fix_cmd, required in checklist():
         if pattern is not None and exists(pattern):
             print(f"[OK] {name}")
             continue
-        print(f"[누락] {name} → 재수집 시도")
+        if name in ALWAYS_RUN:
+            print(f"[갱신] {name} (멱등 재실행)")
+        else:
+            print(f"[누락] {name} → 재수집 시도")
         timeout = 3600 if fix_cmd[0] == "data_collector.py" else 1800
         ok, msg = run(*fix_cmd, timeout=timeout)
         good = exists(pattern) if pattern is not None else ok
         if good:
-            print(f"  [복구] {name}")
+            print(f"  [OK] {name}")
         else:
             pending.append((name, pattern, required, msg))
 

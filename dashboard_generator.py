@@ -46,16 +46,34 @@ AI_ALL_COLS = AI_MACRO_COLS + AI_STOCK_COLS
 
 
 def _load_ai_model():
-    """AI v3 모델 로드 (v3 우선, 없으면 v2). 없으면 None."""
+    """AI 모델 로드 (v4 우선, 없으면 v3 → v2). 없으면 None.
+
+    v4 는 features CSV 로 컬럼 목록 동적 로드 (ai_trainer_v4 의 실제 피처셋).
+    """
+    def _load_v4_cols(base_path):
+        """meta_model_v4.features.csv 에서 피처 목록 로드."""
+        feat_csv = base_path + ".features.csv"
+        if os.path.exists(feat_csv):
+            try:
+                return pd.read_csv(feat_csv, header=None)[0].tolist()
+            except Exception:
+                pass
+        return AI_ALL_COLS  # fallback
+
+    v4_base = "./ai_data/meta_model_v4"
     candidates = [
-        ("./ai_data/meta_model_v3.pkl", "sklearn v3", AI_ALL_COLS),
+        (v4_base + ".json", "xgboost v4", None),  # cols: dynamic
+        (v4_base + ".pkl",  "sklearn v4", None),
+        ("./ai_data/meta_model_v3.pkl",  "sklearn v3", AI_ALL_COLS),
         ("./ai_data/meta_model_v3.json", "xgboost v3", AI_ALL_COLS),
-        ("./ai_data/meta_model_v2.pkl", "sklearn v2", AI_MACRO_COLS),
+        ("./ai_data/meta_model_v2.pkl",  "sklearn v2", AI_MACRO_COLS),
         ("./ai_data/meta_model_v2.json", "xgboost v2", AI_MACRO_COLS),
     ]
     for path, label, cols in candidates:
         if not os.path.exists(path):
             continue
+        if cols is None:
+            cols = _load_v4_cols(v4_base)
         try:
             if path.endswith(".pkl"):
                 import joblib
@@ -784,7 +802,7 @@ def render_html(kpi, equity_pts, open_trades, closed_recent, holdings_hist,
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>Paper Trading Dashboard — high_500d_h40_MKT</title>
+  <title>천억이의 대시보드 — high_500d_h40_MKT</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {{ font-family: -apple-system, "Malgun Gothic", sans-serif;
@@ -891,7 +909,7 @@ def render_html(kpi, equity_pts, open_trades, closed_recent, holdings_hist,
 </head>
 <body>
   <div class="container">
-    <h1>📊 Paper Trading Dashboard</h1>
+    <h1>📊 천억이의 대시보드</h1>
     <div class="subtitle">메인 전략: high_500d_h40_MKT (X2 시간외 +2%) · 자본: 1,000만원 · 마지막 업데이트: {now}</div>
 
     <div class="tabs">
@@ -1362,11 +1380,11 @@ def main():
     # [2026-06-12] 키움 모의계좌 섹션을 최상단에 주입 (메인), 기존 paper 는 참고(X2)
     try:
         kiwoom_html = _render_kiwoom_section(name_cache or {})
-        anchor = "<h1>📊 Paper Trading Dashboard</h1>"
+        anchor = "<h1>📊 천억이의 대시보드</h1>"
         if anchor in html:
             html = html.replace(
                 anchor,
-                "<h1>📊 Trading Dashboard — 키움 모의계좌(메인) · Paper X2(참고)</h1>"
+                "<h1>📊 천억이의 대시보드 — 키움 모의계좌(메인) · Paper X2(참고)</h1>"
                 + kiwoom_html, 1)
     except Exception as e:
         print(f"[warn] 키움 섹션 렌더 실패 (무시): {e}")

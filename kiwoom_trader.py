@@ -254,7 +254,8 @@ def cmd_buy():
         md = pd.read_csv(sig_csv, encoding="utf-8-sig", dtype={"code": str})
         md = md.rename(columns={"거래대금": "trading_value"})
         md["code"] = md["code"].astype(str).str.zfill(6)
-        tv_map = dict(zip(md["code"], md.get("trading_value", 0)))
+        if "trading_value" in md.columns:
+            tv_map = dict(zip(md["code"], md["trading_value"]))
     sigs = sorted(sigs, key=lambda r: float(tv_map.get(r["code"], 0) or 0), reverse=True)
 
     n_placed = 0

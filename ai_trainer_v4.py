@@ -38,16 +38,22 @@ BIG_WIN_PCT = 10.0
 EMBARGO_BDAYS = 40
 
 FEATURES = [
-    # 종목
+    # 종목 (pykrx CSV)
     "rsi14", "atr_pct", "vol_ratio", "tv_ratio", "for_5d", "ins_5d", "mcap_class",
     # 신호 강도/유동성
     "score_tv",
-    # 뉴스 (stock.db)
+    # 뉴스 (stock.db news)
     "news_sent_7d", "news_cnt_7d",
-    # 매크로 레짐 (stock.db)
+    # 매크로 레짐 (stock.db macro_indicators + indicators.csv)
     "vix", "vix_chg_5d", "sox_ret_5d", "usdkrw_chg_5d", "kospi_ret_20d",
-    # 키움 백필 수급 (kiwoom_backfill merge 후 존재 — 없으면 자동 제외)
-    "crd_remn_rt", "crd_remn_chg_5d", "prm_net_5d_ratio",
+    # 신용잔고 (stock.db credit_balance 2022~ / kiwoom_backfill 우선)
+    "crd_remn_rt", "crd_remn_chg_5d",
+    # 수급 DB (stock.db supply_demand 2015~) — pykrx for_5d/ins_5d 보완
+    "for_net5_db", "ins_net5_db",
+    # 기술지표 DB (stock.db korea_indicators — 사전 계산)
+    "rsi_db", "macd_hist_db", "bb_pct_db",
+    # 키움 프로그램매매 (kiwoom_backfill merge 후 존재 — 없으면 자동 제외)
+    "prm_net_5d_ratio",
 ]
 CAT = {"strategy"}  # one-hot
 
@@ -74,6 +80,13 @@ def main():
         X_all = X_all.fillna(X_all.median(numeric_only=True))
 
     # ---- Purged time-series split (80/20) ----
+    # 미청산(보유 중) 매매는 exit_date=NaN → 라벨도 없고 누수 위험 → 먼저 제거
+    n_before = len(df)
+    df = df[df["exit_date"].notna()].copy()
+    if n_before - len(df):
+        print(f"[filter] 미청산(exit_date NaN) {n_before - len(df):,}건 제외")
+    X_all = X_all.loc[df.index]   # feature 행도 동기화
+
     dates = sorted(df["date"].unique())
     cut_date = dates[int(len(dates) * 0.8)]
     test_mask = df["date"] > cut_date

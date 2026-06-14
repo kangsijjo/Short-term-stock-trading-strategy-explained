@@ -9,9 +9,11 @@ API 키 발급 필수:
 호출 시점: 매일 평일 19:00 권장 (당일 공시 마감 후, KIS_DART 작업).
 
 사용법:
-  python dart_collector.py today          # 오늘 공시
-  python dart_collector.py date 20260604  # 특정 날짜
-  python dart_collector.py corp 005930    # 특정 종목 최근 공시
+  python dart_collector.py today                      # 오늘 공시
+  python dart_collector.py date 20260604              # 특정 날짜
+  python dart_collector.py corp 005930                # 특정 종목 최근 공시
+  python dart_collector.py date 20260604 --force      # 특정 날짜 강제 재수집
+  python dart_collector.py today --force              # 오늘 강제 재수집
 
 저장: db/dart/YYYY-MM/YYYYMMDD.csv
 스키마: code, corp_code, corp_name, report_nm, rcept_dt, rcept_no, flr_nm
@@ -19,7 +21,6 @@ API 키 발급 필수:
 
 import sys
 import os
-import json
 import csv
 from datetime import datetime
 
@@ -46,15 +47,9 @@ def _check_api_key():
         sys.exit(1)
 
 
-def fetch_disclosures(begin_date, end_date=None, corp_code=None, page_count=100, max_pages=10):
-    """DART 공시검색 API 호출. 페이징 처리하여 모든 공시 반환.
-
-    Args:
-        begin_date / end_date: YYYYMMDD
-        corp_code: DART 고유번호 8자리 (없으면 전체)
-
-    Returns: list[dict]
-    """
+def fetch_disclosures(begin_date, end_date=None, corp_code=None,
+                      page_count=100, max_pages=10):
+    """DART 공시검색 API 호출. 페이징 처리하여 모든 공시 반환."""
     _check_api_key()
     if end_date is None:
         end_date = begin_date
@@ -79,7 +74,7 @@ def fetch_disclosures(begin_date, end_date=None, corp_code=None, page_count=100,
             break
 
         status = data.get("status", "")
-        if status == "013":  # 조회된 데이터 없음
+        if status == "013":   # 조회된 데이터 없음
             break
         if status != "000":
             print(f"  [warn] DART status={status} msg={data.get('message')}")
@@ -94,14 +89,28 @@ def fetch_disclosures(begin_date, end_date=None, corp_code=None, page_count=100,
     return results
 
 
-def save_dart_for_date(date_str=None):
+def _force_delete_dart(date_str):
+    """특정 날짜 공시 파일 삭제 → 재수집 가능 상태로 초기화."""
+    out_dir = _month_dir(config.DB_DART_DIR, date_str)
+    out_path = f"{out_dir}/{date_str}.csv"
+    if os.path.exists(out_path):
+        os.remove(out_path)
+        print(f"[dart][force] 삭제: {out_path}")
+    else:
+        print(f"[dart][force] {date_str} — 기존 파일 없음 (신규 수집)")
+
+
+def save_dart_for_date(date_str=None, force=False):
     """특정 날짜 전체 공시 목록 저장 → db/dart/YYYY-MM/YYYYMMDD.csv"""
     if date_str is None:
         date_str = datetime.now().strftime("%Y%m%d")
 
     out_dir = _month_dir(config.DB_DART_DIR, date_str)
     out_path = f"{out_dir}/{date_str}.csv"
-    if os.path.exists(out_path):
+
+    if force:
+        _force_delete_dart(date_str)
+    elif os.path.exists(out_path):
         print(f"[dart] 이미 있음, 스킵: {out_path}")
         return
 
@@ -109,11 +118,9 @@ def save_dart_for_date(date_str=None):
     items = fetch_disclosures(date_str)
     if not items:
         print(f"  {date_str} 공시 없음 (휴장 또는 미공시)")
-        # 빈 파일이라도 만들어서 "확인했다" 마킹
         open(out_path, "w", encoding="utf-8-sig").close()
         return
 
-    # CSV 저장 (DART API 응답 그대로)
     fieldnames = list(items[0].keys())
     with open(out_path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -147,25 +154,28 @@ def backfill_missing(lookback_bdays=10):
 
 
 def main():
-    # [fix] 인자 없으면 기본 동작 (이전엔 사용법만 출력하고 종료 → 가드의
-    #       재수집 호출이 실제로는 아무것도 안 하던 잠복 버그)
-    cmd = sys.argv[1] if len(sys.argv) >= 2 else "today"
+    # 인자 없으면 today 기본 동작 (가드의 재수집 호출 호환)
+    args = sys.argv[1:]
+    force = "--force" in args
+    args = [a for a in args if a != "--force"]
+
+    cmd = args[0] if args else "today"
 
     if cmd == "today":
         backfill_missing()
-        save_dart_for_date()
+        save_dart_for_date(force=force)
     elif cmd == "date":
-        if len(sys.argv) < 3:
-            print("사용법: python dart_collector.py date YYYYMMDD")
+        if len(args) < 2:
+            print("사용법: python dart_collector.py date YYYYMMDD [--force]")
             sys.exit(1)
-        save_dart_for_date(sys.argv[2])
+        save_dart_for_date(args[1], force=force)
     elif cmd == "corp":
-        if len(sys.argv) < 3:
+        if len(args) < 2:
             print("사용법: python dart_collector.py corp CORP_CODE [DATE_FROM] [DATE_TO]")
             sys.exit(1)
-        corp = sys.argv[2]
-        df = sys.argv[3] if len(sys.argv) >= 4 else datetime.now().strftime("%Y%m%d")
-        dt = sys.argv[4] if len(sys.argv) >= 5 else None
+        corp = args[1]
+        df = args[2] if len(args) >= 3 else datetime.now().strftime("%Y%m%d")
+        dt = args[3] if len(args) >= 4 else None
         save_dart_for_corp(corp, df, dt)
     else:
         print(__doc__)

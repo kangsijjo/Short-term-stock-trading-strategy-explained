@@ -1,9 +1,10 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
 REM ============================================================
-REM  Kiwoom mock-trading executor - daily 16:05
-REM  (after-hours single-price session 16:00-18:00)
-REM  steps: sell(40-day exits) -> buy(today signals) -> status
+REM  Kiwoom mock-trading executor - 원본 모드 (시장가)
+REM  KIS_KiwoomBuy  09:01 -> buy (전일 신호, 시가 체결)
+REM  KIS_KiwoomSell 15:21 -> sell (40영업일 만기, 마감 동시호가 ≈ 종가)
+REM  'daily' 커맨드가 시계로 분기: 12시 이전=buy, 이후=sell
 REM ============================================================
 set PYTHONIOENCODING=utf-8
 

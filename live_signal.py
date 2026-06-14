@@ -153,10 +153,10 @@ def main():
 
     signals, today = detect_signals_today(df)
 
-    # 기존 신호와 비교 — 중복 제거
+    # 기존 신호 1회만 로드 — 타입 일관성 유지 (str + zfill)
     existing = load_existing_signals()
     new = [s for s in signals
-           if (s["signal_date"], s["code"]) not in existing]
+           if (str(s["signal_date"]), str(s["code"]).zfill(6)) not in existing]
 
     print(f"\n[signal] {today} 신호 종목: {len(signals)} 건")
     print(f"          새 신호 (중복 제외): {len(new)} 건")
@@ -175,10 +175,7 @@ def main():
     if len(signals) > 30:
         print(f"  ... 외 {len(signals)-30}개")
 
-    # 멱등 append (signal_date + code 중복 제거)
-    existing = load_existing_signals()
-    new = [s for s in signals
-           if (str(s["signal_date"]), str(s["code"]).zfill(6)) not in existing]
+    # 멱등 append
     if new:
         append_signals(new)
         print(f"\n  → {len(new)}개 신규 신호 → {SIGNALS_CSV}")
